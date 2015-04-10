@@ -1,45 +1,51 @@
 package sk.bratia4.mylogger;
 
-import android.app.ListActivity;
-import android.content.ComponentName;
-import android.content.Context;
+import android.app.Notification;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.Intent;
-import android.content.ServiceConnection;
-import android.os.IBinder;
-import android.os.Message;
-import android.support.v7.app.ActionBarActivity;
+import android.net.Uri;
 import android.os.Bundle;
-import android.text.method.ScrollingMovementMethod;
+import android.support.v4.app.FragmentActivity;
+import android.support.v4.app.FragmentManager;
+import android.support.v4.app.FragmentTransaction;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.ArrayAdapter;
-import android.widget.EditText;
-import android.widget.TextView;
-import android.widget.Toast;
+import android.support.v4.app.Fragment;
 
-import java.util.ArrayList;
 import java.util.List;
 import android.os.Handler;
 
-import java.util.Scanner;
-import java.util.logging.LogRecord;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import sk.bratia4.mylogger.screen.LinuxLogFragment;
+import sk.bratia4.mylogger.screen.LogCatFragment;
+import sk.bratia4.mylogger.screen.MenuFragment;
+import sk.bratia4.mylogger.services.LoggerService;
 
 
-public class MyMainActivity extends ListActivity {
+public class MyMainActivity extends FragmentActivity implements LogCatFragment.OnFragmentInteractionListener, LinuxLogFragment.OnFragmentInteractionListener {
     private LoggerService s;
     private ArrayAdapter<String> adapter;
     private List<String> wordList;
 
+    boolean mIsBound = false;
+    private NotificationManager mNM;
+    private int NOTIFICATION = R.string.virdir_service_started;
     public static Handler mUiHandler = null;
 
-    boolean mIsBound = false;
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
+    }
+
+    public void changeFragment(Fragment fr){
+        FragmentManager fm = getSupportFragmentManager();
+        FragmentTransaction ft = fm.beginTransaction();
+        ft.replace(R.id.fragmentPlace, fr);
+        ft.addToBackStack(null);
+        ft.commit();
     }
 
     @Override
@@ -47,46 +53,13 @@ public class MyMainActivity extends ListActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_my_main);
 
-        mUiHandler = new Handler() // Receive messages from service class
-        {
-            public void handleMessage(Message msg)
-            {
-                switch(msg.what)
-                {
-                    case 0:
-                        // add the status which came from service and show on GUI
-                        //Toast.makeText(MyMainActivity.this, msg.obj.toString(), Toast.LENGTH_LONG).show();
-                        TextView tv = (TextView)findViewById(R.id.textView);
-                        tv.setMovementMethod(new ScrollingMovementMethod());
+        MenuFragment menuf = new MenuFragment();
+        FragmentManager fm = getSupportFragmentManager();
+        FragmentTransaction ft = fm.beginTransaction();
+        ft.replace(R.id.fragmentPlace, menuf);
+        ft.commit();
 
-                        EditText edita = (EditText)findViewById(R.id.editText);
-
-                        Pattern pattern = Pattern.compile(".*mylogger.*");
-
-                        if(!edita.getText().equals("")){
-                            pattern = Pattern.compile(".*"+edita.getText()+".*");
-                        }
-
-                        StringBuffer sb = new StringBuffer();
-
-                        Scanner scanner = new Scanner(msg.obj.toString());
-                        while(scanner.hasNextLine()) {
-                            String line = scanner.nextLine();
-                            Matcher matcher = pattern.matcher(line);
-                            if(matcher.find()){
-                                sb.append(line + '\n');
-                            }
-                        }
-                        scanner.close();
-
-                        tv.setText(sb.toString());
-                        break;
-
-                    default:
-                        break;
-                }
-            }
-        };
+        mNM = (NotificationManager)getSystemService(NOTIFICATION_SERVICE);
     }
 
     /*@Override
@@ -101,16 +74,6 @@ public class MyMainActivity extends ListActivity {
         super.onPause();
         unbindService(mConnection);
     }*/
-
-    // Method to start the service
-    public void startService(View view) {
-        startService(new Intent(getBaseContext(), LoggerService.class));
-    }
-
-    // Method to stop the service
-    public void stopService(View view) {
-        stopService(new Intent(getBaseContext(), LoggerService.class));
-    }
 
     //send message to service
    /* public void onClick (View v)
@@ -158,5 +121,41 @@ public class MyMainActivity extends ListActivity {
             return true;
         }
         return super.onOptionsItemSelected(item);
+    }
+
+    public void showNotification() {
+        CharSequence text = getText(R.string.virdir_service_started);
+        Notification notification = new Notification(R.drawable.abc_spinner_mtrl_am_alpha, text,
+                System.currentTimeMillis());
+
+        // The PendingIntent to launch our activity if the user selects this notification
+        PendingIntent contentIntent = PendingIntent.getActivity(this, 0,
+                new Intent(this, MyMainActivity.class), 0);
+
+        // Set the info for the views that show in the notification panel.
+        notification.setLatestEventInfo(this, getText(R.string.virdir_service_name),
+                text, contentIntent);
+
+        // Send the notification.
+        mNM.notify(NOTIFICATION, notification);
+    }
+
+    public void cancelNotification(){
+        mNM.cancel(NOTIFICATION);
+    }
+
+    // Method to start the service
+    public void startService(View view) {
+        startService(new Intent(getBaseContext(), LoggerService.class));
+    }
+
+    // Method to stop the service
+    public void stopService(View view) {
+        stopService(new Intent(getBaseContext(), LoggerService.class));
+    }
+
+    @Override
+    public void onFragmentInteraction(Uri uri) {
+
     }
 }

@@ -1,4 +1,4 @@
-package sk.bratia4.mylogger;
+package sk.bratia4.mylogger.services;
 
 import android.app.Notification;
 import android.app.NotificationManager;
@@ -10,17 +10,18 @@ import android.os.IBinder;
 import android.os.Looper;
 import android.os.Message;
 import android.util.Log;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
+
 import android.os.Handler;
-import java.util.logging.LogRecord;
+
+import sk.bratia4.mylogger.MyMainActivity;
+import sk.bratia4.mylogger.R;
+import sk.bratia4.mylogger.screen.LogCatFragment;
 
 public class LoggerService extends Service {
     private NotificationManager mNM;
@@ -168,7 +169,7 @@ public class LoggerService extends Service {
                         case 0: // we sent message with what value =0 from the activity. here it is
                             //Reply to the activity from here using same process handle.sendMessage()
                             //So first get the Activity handler then send the message
-                            if(null != MyMainActivity.mUiHandler)
+                            if(null != LogCatFragment.mUiHandler)
                             {
                                 //first build the message and send.
                                 //put a integer value here and get it from the Activity handler
@@ -181,7 +182,7 @@ public class LoggerService extends Service {
                                 else
                                     msgToActivity.obj  = "Request Received. Service is not Running"; // you can put extra message here
 
-                                MyMainActivity.mUiHandler.sendMessage(msgToActivity);
+                                LogCatFragment.mUiHandler.sendMessage(msgToActivity);
                             }
 
                             break;
@@ -214,7 +215,7 @@ public class LoggerService extends Service {
 
             msgToActivity.obj = log.toString(); // you can put extra message here
 
-            MyMainActivity.mUiHandler.sendMessage(msgToActivity);
+            LogCatFragment.mUiHandler.sendMessage(msgToActivity);
 
         }
     }

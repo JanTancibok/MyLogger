@@ -10,62 +10,10 @@
     android:layout_height="fill_parent"
     android:orientation="vertical" >
 
-    <!--<TextView
-        android:layout_width="fill_parent"
-        android:layout_height="wrap_content"
-        android:text="@string/hello" />
 
-    Button
-        android:id="@+id/button1"
-        android:layout_width="fill_parent"
-        android:layout_height="wrap_content"
-        android:onClick="onClick"
-        android:text="Update" >
-    </Button-->
-
-    <RelativeLayout
-        android:layout_width="fill_parent"
-        android:layout_height="wrap_content">
-
-        <Button android:id="@+id/btnStartService"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="start service"
-            android:onClick="startService"/>
-
-        <Button android:id="@+id/btnStopService"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="stop  service"
-            android:onClick="stopService"
-            android:layout_alignParentTop="true"
-            android:layout_toRightOf="@+id/btnStartService"
-            android:layout_toEndOf="@+id/btnStartService"
-            android:layout_marginLeft="41dp" />
-
-    </RelativeLayout>
-
-
-    <EditText
-        android:layout_width="fill_parent"
-        android:layout_height="wrap_content"
-        android:id="@+id/editText"
-        android:layout_below="@+id/btnStartService"
-        android:layout_alignParentLeft="true"
-        android:layout_alignParentStart="true"
-        android:layout_marginLeft="10dp" />
-
-    <ListView
+    <FrameLayout
+        android:id="@+id/fragmentPlace"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:id="@id/android:list" />
-
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:maxLines = "20"
-        android:scrollbars = "vertical"
-        android:ems="10"
-        android:id="@+id/textView" />
+        android:layout_height="match_parent"></FrameLayout>
 
 </LinearLayout>
