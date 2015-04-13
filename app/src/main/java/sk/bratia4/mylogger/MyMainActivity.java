@@ -31,6 +31,12 @@ public class MyMainActivity extends FragmentActivity implements LogCatFragment.O
 
     boolean mIsBound = false;
     private NotificationManager mNM;
+
+    public int getNetDevRunning() {
+        return netDevRunning;
+    }
+
+    private int netDevRunning = 0;
     private int NOTIFICATION = R.string.virdir_service_started;
     public static Handler mUiHandler = null;
 
@@ -51,9 +57,17 @@ public class MyMainActivity extends FragmentActivity implements LogCatFragment.O
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        if (savedInstanceState != null) {
+            // Restore last state for checked position.
+            netDevRunning = savedInstanceState.getInt("run", 0);
+        }
+
         setContentView(R.layout.activity_my_main);
 
-        MenuFragment menuf = new MenuFragment();
+        MenuFragment menuf = MenuFragment.newInstance();
+
+        menuf.setArguments(savedInstanceState);
+
         FragmentManager fm = getSupportFragmentManager();
         FragmentTransaction ft = fm.beginTransaction();
         ft.replace(R.id.fragmentPlace, menuf);
@@ -138,9 +152,12 @@ public class MyMainActivity extends FragmentActivity implements LogCatFragment.O
 
         // Send the notification.
         mNM.notify(NOTIFICATION, notification);
+
+        netDevRunning = 1;
     }
 
     public void cancelNotification(){
+        netDevRunning = 0;
         mNM.cancel(NOTIFICATION);
     }
 
@@ -157,5 +174,11 @@ public class MyMainActivity extends FragmentActivity implements LogCatFragment.O
     @Override
     public void onFragmentInteraction(Uri uri) {
 
+    }
+
+    @Override
+    public void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putInt("run", netDevRunning);
     }
 }

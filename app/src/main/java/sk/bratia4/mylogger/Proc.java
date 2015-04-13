@@ -1,4 +1,4 @@
-package sk.bratia4.mylogger.services;
+package sk.bratia4.mylogger;
 /**
  * SystemSens
  *

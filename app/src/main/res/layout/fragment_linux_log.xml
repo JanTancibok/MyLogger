@@ -15,7 +15,7 @@
         android:textOff="@string/toggle_turn_on"
         android:id="@+id/toggleButton_LinuxLog"
         android:layout_gravity="right|top"
-        android:checked="false"/>
+        />
 
     <TextView
         android:layout_width="wrap_content"

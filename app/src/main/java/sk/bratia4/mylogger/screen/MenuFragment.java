@@ -1,5 +1,9 @@
 package sk.bratia4.mylogger.screen;
 
+import android.app.AlarmManager;
+import android.app.PendingIntent;
+import android.content.Context;
+import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
@@ -10,6 +14,7 @@ import android.widget.Button;
 
 import sk.bratia4.mylogger.MyMainActivity;
 import sk.bratia4.mylogger.R;
+import sk.bratia4.mylogger.services.NetDevService;
 
 /**
  * A simple {@link Fragment} subclass.
@@ -21,14 +26,8 @@ import sk.bratia4.mylogger.R;
  *
  */
 public class MenuFragment extends Fragment implements View.OnClickListener{
-    // TODO: Rename parameter arguments, choose names that match
-    // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
-    private static final String ARG_PARAM1 = "param1";
-    private static final String ARG_PARAM2 = "param2";
 
-    // TODO: Rename and change types of parameters
-    private String mParam1;
-    private String mParam2;
+    private Bundle args;
 
     private OnFragmentInteractionListener mListener;
 
@@ -42,11 +41,11 @@ public class MenuFragment extends Fragment implements View.OnClickListener{
     // TODO: Rename and change types and number of parameters
     public static MenuFragment newInstance() {
         MenuFragment fragment = new MenuFragment();
-        Bundle args = new Bundle();
         return fragment;
     }
     public MenuFragment() {
         // Required empty public constructor
+        args = getArguments();
     }
 
     @Override
@@ -79,11 +78,30 @@ public class MenuFragment extends Fragment implements View.OnClickListener{
         switch (view.getId()) {
             case R.id.button:
                 fr = new LinuxLogFragment();
+
+                if (args == null) {
+                    // Restore last state for checked position.
+                    Bundle b = new Bundle();
+                    b.putInt("run", ((MyMainActivity) getActivity()).getNetDevRunning());
+                    fr.setArguments(b);
+                }else fr.setArguments(args);
                 ((MyMainActivity) getActivity()).changeFragment(fr);
                 break;
             case R.id.button2:
                 fr = new LogCatFragment();
                 ((MyMainActivity) getActivity()).changeFragment(fr);
+                break;
+            case R.id.button3:
+
+
+                /*AlarmManager alarm = (AlarmManager) getActivity().getSystemService(Context.ALARM_SERVICE);
+                if (pintent==null) {
+                    intent = new Intent(getActivity(), NetDevService.class);
+                    pintent = PendingIntent.getService(getActivity(), REQUEST_CODE, intent, PendingIntent.FLAG_CANCEL_CURRENT);
+                }
+                alarm.cancel(pintent);
+                ((MyMainActivity) getActivity()).cancelNotification();*/
+
                 break;
         }
     }

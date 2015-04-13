@@ -8,9 +8,11 @@ import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.TextView;
 import android.widget.ToggleButton;
 
 import sk.bratia4.mylogger.MyMainActivity;
@@ -42,7 +44,7 @@ public class LinuxLogFragment extends Fragment implements View.OnClickListener {
     PendingIntent pintent;
     private static final String TAG_NETDEVSERVICE = "NetDev_Service";
     private int NOTIFICATION = R.string.virdir_service_started;
-    private int netDevRunning = 0;
+    private int netDevRunning = 0;                                              //NEED PERSIST
     public static final int REQUEST_CODE = 120591;
 
     private OnFragmentInteractionListener mListener;
@@ -68,8 +70,7 @@ public class LinuxLogFragment extends Fragment implements View.OnClickListener {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         if (getArguments() != null) {
-            mParam1 = getArguments().getString(ARG_PARAM1);
-            mParam2 = getArguments().getString(ARG_PARAM2);
+            netDevRunning = getArguments().getInt("run",0);
         }
     }
 
@@ -80,6 +81,10 @@ public class LinuxLogFragment extends Fragment implements View.OnClickListener {
         View view = inflater.inflate(R.layout.fragment_linux_log, container, false);
         toggleButtonLin = (ToggleButton) view.findViewById(R.id.toggleButton_LinuxLog);
         toggleButtonLin.setOnClickListener(this);
+        if (getArguments() != null) {
+            netDevRunning = getArguments().getInt("run",0);
+        }
+        toggleButtonLin.setChecked(1==netDevRunning);
         return view;
     }
 
@@ -125,17 +130,21 @@ public class LinuxLogFragment extends Fragment implements View.OnClickListener {
     @Override
     public void onClick(View v) {
         //do what you want to do when button is clicked
+
         if(((ToggleButton) v).isChecked()) {
+            int delay = Integer.parseInt(((TextView) getView().findViewById(R.id.editText)).getText().toString());
+
             // handle toggle on
             //startService(new Intent(getBaseContext(), LinuxService.class));
             alarm = (AlarmManager) getActivity().getSystemService(Context.ALARM_SERVICE);
             intent = new Intent(getActivity(), NetDevService.class);
             pintent = PendingIntent.getService(getActivity(), REQUEST_CODE, intent, 0);
-            alarm.setRepeating(AlarmManager.RTC_WAKEUP, System.currentTimeMillis(), 10000, pintent);
+            alarm.setRepeating(AlarmManager.RTC_WAKEUP, System.currentTimeMillis(), delay, pintent);
 
             //mNM = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
             // Display a notification about us starting.  We put an icon in the status bar.
             ((MyMainActivity) getActivity()).showNotification();
+            Log.d(TAG_NETDEVSERVICE, "AlarmManager started with interval: "+delay);
 
             netDevRunning = 1;
         } else {

@@ -1,7 +1,9 @@
 package sk.bratia4.mylogger.services;
 
 import android.app.IntentService;
+import android.content.Context;
 import android.content.Intent;
+import android.net.ConnectivityManager;
 import android.os.Environment;
 import android.text.format.Time;
 import android.util.Log;
@@ -9,11 +11,12 @@ import android.util.Log;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.RandomAccessFile;
 import java.util.ArrayList;
-import java.util.List;
 import java.util.StringTokenizer;
 
 /**
@@ -21,7 +24,7 @@ import java.util.StringTokenizer;
  */
 public class NetDevService extends IntentService {
     private static final String TAG = "NetDevService";
-
+    private String TYPE = "";
 
     public NetDevService() {
         super(NetDevService.class.getName());
@@ -42,7 +45,6 @@ public class NetDevService extends IntentService {
             FileOutputStream stream = new FileOutputStream(logfile, true);
             try {
                 stream.write(what.getBytes());
-                stream.write("\n".getBytes());
             } finally {
                 stream.close();
             }
@@ -135,23 +137,87 @@ public class NetDevService extends IntentService {
     }
 
     public void parseUids(){
-        File dir = new File("/proc/uid_stat/");
-        String[] children = dir.list();
-        List<Integer> uids = new ArrayList<Integer>();
-        if (children != null) {
-            for (int i = 0; i < children.length; i++) {
-                int uid = Integer.parseInt(children[i]);
-                if ((uid >= 0 && uid < 2000) || (uid >= 10000)) {
-                    uids.add(uid);
+         File dir = new File("/proc/uid_stat/");
+            String[] children = dir.list();
+            ArrayList<Integer> uids = new ArrayList<Integer>();
+            if (children != null) {
+                for (int i = 0; i < children.length; i++) {
+                    int uid = Integer.parseInt(children[i]);
+                    if ((uid >= 0 && uid < 2000) || (uid >= 10000)) {
+                        uids.add(uid);
+                    }
                 }
             }
-        }
 
+            RandomAccessFile rifle;
+            StringBuilder sbuff = new StringBuilder();
+            Time now = new Time("UTC");
+            now.setToNow();
+
+            //tcp_snd = new byte[4];
+
+            for (int i : uids) {
+                sbuff.append(TYPE + ";" + now.format2445() + ";" + i + ";");
+                try {
+                    rifle = new RandomAccessFile("/proc/uid_stat/" + i + "/tcp_snd", "r");
+                    //rifle.readFully(tcp_snd);
+                    sbuff.append(rifle.readInt() + ";");
+                    rifle.close();
+
+                    rifle = new RandomAccessFile("/proc/uid_stat/" + i + "/tcp_rcv", "r");
+                    sbuff.append(rifle.readInt() + "\n");
+                    rifle.close();
+
+                } catch (FileNotFoundException e) {
+                    e.printStackTrace();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+
+            if (isExternalStorageWritable()) {
+                // Get the directory for the app's private pictures directory.
+                File pathToSd = Environment.getExternalStorageDirectory();
+                File file = new File(pathToSd, "LOGS");
+                file.mkdirs();
+                if (!file.exists()) {
+                    Log.e(TAG, "Directory not created");
+                } else {
+                    File logfile = new File(file.getAbsolutePath() + "/net_stat_app.csv");
+                    if (!logfile.exists()) {
+                        //write headers one
+                        String headers = "TYPE;Time;UID;Rxbytes;Txbytes;";
+                        appendToFile(headers, file.getAbsolutePath() + "/net_stat_app.csv");
+                    }
+                    appendToFile(sbuff.toString(), file.getAbsolutePath() + "/net_stat_app.csv");
+                }
+            } else {
+                Log.e(TAG, "Cant write to SDcard");
+            }
 
     }
 
     @Override
     protected void onHandleIntent(Intent intent) {
-        getNetDev("/proc/net/dev");
+
+        final ConnectivityManager connMgr = (ConnectivityManager) getApplicationContext()
+                .getSystemService(Context.CONNECTIVITY_SERVICE);
+
+        final android.net.NetworkInfo wifi = connMgr
+                .getNetworkInfo(ConnectivityManager.TYPE_WIFI);
+
+        final android.net.NetworkInfo mobile = connMgr
+                .getNetworkInfo(ConnectivityManager.TYPE_MOBILE);
+
+        if(wifi.isConnected()){
+            TYPE="wifi";
+        }else{
+            if(mobile.isConnected()){TYPE="mobil";}
+        }
+
+        if(!TYPE.equals("")) {
+            getNetDev("/proc/net/dev");
+            parseUids();
+        }
     }
 }
