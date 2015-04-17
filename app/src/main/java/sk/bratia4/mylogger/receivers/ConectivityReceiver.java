@@ -24,7 +24,7 @@ public class ConectivityReceiver extends BroadcastReceiver {
         if (wifi.isAvailable() || mobile.isAvailable()) {
             // Do something
 
-            Log.d("Netowk Available ", "Flag No 1");
+            Log.d("Network Available ", "Flag No 1");
         }
     }
 }

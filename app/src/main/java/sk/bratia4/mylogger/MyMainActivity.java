@@ -4,6 +4,7 @@ import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Bundle;
 import android.support.v4.app.FragmentActivity;
@@ -55,11 +56,20 @@ public class MyMainActivity extends FragmentActivity implements LogCatFragment.O
     }
 
     @Override
+    protected void  onRestoreInstanceState(Bundle savedInstanceState){
+        super.onRestoreInstanceState(savedInstanceState);
+        if (savedInstanceState != null) {
+            // Restore last state for checked position.
+            //netDevRunning = savedInstanceState.getInt("run", 0);
+        }
+    }
+
+    @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         if (savedInstanceState != null) {
             // Restore last state for checked position.
-            netDevRunning = savedInstanceState.getInt("run", 0);
+            //netDevRunning = savedInstanceState.getInt("run", 0);
         }
 
         setContentView(R.layout.activity_my_main);
@@ -76,47 +86,21 @@ public class MyMainActivity extends FragmentActivity implements LogCatFragment.O
         mNM = (NotificationManager)getSystemService(NOTIFICATION_SERVICE);
     }
 
-    /*@Override
+    @Override
     protected void onResume() {
         super.onResume();
-        Intent intent= new Intent(this, LoggerService.class);
-        bindService(intent, mConnection, Context.BIND_AUTO_CREATE);
+        SharedPreferences preferences = getPreferences(MODE_PRIVATE);
+        netDevRunning = preferences.getInt("run",0);
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-        unbindService(mConnection);
-    }*/
-
-    //send message to service
-   /* public void onClick (View v)
-    {
-        //only we need a handler to send message to any component.
-        //here we will get the handler from the service first, then
-        //we will send a message to the service.
-
-        if(null != LoggerService.mMyServiceHandler)
-        {
-            //first build the message and send.
-            //put a integer value here and get it from the service handler
-            //For Example: lets use 0 (msg.what = 0;) for getting service running status from the service
-            Message msg = new Message();
-            msg.what = 0;
-            msg.obj  = "Add your Extra Meaage Here"; // you can put extra message here
-            LoggerService.mMyServiceHandler.sendMessage(msg);
-        }
-    }*/
-
-    /*public void onClick(View view) {
-        if (s != null) {
-            Toast.makeText(this, "Number of elements" + s.getWordList().size(),
-                    Toast.LENGTH_SHORT).show();
-            wordList.clear();
-            wordList.addAll(s.getWordList());
-            adapter.notifyDataSetChanged();
-        }
-    }*/
+        SharedPreferences preferences = getPreferences(MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putInt("run",netDevRunning);                                     //??test
+        editor.apply();
+    }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {

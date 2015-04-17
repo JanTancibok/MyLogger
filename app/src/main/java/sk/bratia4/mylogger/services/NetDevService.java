@@ -23,7 +23,8 @@ import java.util.StringTokenizer;
  * Created by Janko on 4/9/2015.
  */
 public class NetDevService extends IntentService {
-    private static final String TAG = "NetDevService";
+    private static final String TAG = "mylogger.NetDevService";
+    private static final String MEMINFO_PATH = "/proc/meminfo";
     private String TYPE = "";
 
     public NetDevService() {
@@ -219,5 +220,7 @@ public class NetDevService extends IntentService {
             getNetDev("/proc/net/dev");
             parseUids();
         }
+
+
     }
 }

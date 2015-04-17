@@ -17,6 +17,7 @@ import android.widget.ToggleButton;
 
 import sk.bratia4.mylogger.MyMainActivity;
 import sk.bratia4.mylogger.R;
+import sk.bratia4.mylogger.services.AppInfoService;
 import sk.bratia4.mylogger.services.NetDevService;
 
 /**
@@ -33,6 +34,7 @@ public class LinuxLogFragment extends Fragment implements View.OnClickListener {
     // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
     private static final String ARG_PARAM1 = "param1";
     private static final String ARG_PARAM2 = "param2";
+    private static final int MIN_DELAY = 2000;
 
     // TODO: Rename and change types of parameters
     private String mParam1;
@@ -42,6 +44,8 @@ public class LinuxLogFragment extends Fragment implements View.OnClickListener {
     AlarmManager alarm;
     Intent intent;
     PendingIntent pintent;
+    Intent apintent;
+    PendingIntent appintent;
     private static final String TAG_NETDEVSERVICE = "NetDev_Service";
     private int NOTIFICATION = R.string.virdir_service_started;
     private int netDevRunning = 0;                                              //NEED PERSIST
@@ -134,12 +138,24 @@ public class LinuxLogFragment extends Fragment implements View.OnClickListener {
         if(((ToggleButton) v).isChecked()) {
             int delay = Integer.parseInt(((TextView) getView().findViewById(R.id.editText)).getText().toString());
 
+            if(delay<MIN_DELAY){
+                delay=MIN_DELAY;
+            }
+
             // handle toggle on
             //startService(new Intent(getBaseContext(), LinuxService.class));
             alarm = (AlarmManager) getActivity().getSystemService(Context.ALARM_SERVICE);
+
             intent = new Intent(getActivity(), NetDevService.class);
             pintent = PendingIntent.getService(getActivity(), REQUEST_CODE, intent, 0);
+
             alarm.setRepeating(AlarmManager.RTC_WAKEUP, System.currentTimeMillis(), delay, pintent);
+
+            apintent = new Intent(getActivity(), AppInfoService.class);
+            apintent.setAction(AppInfoService.ACTION_GETAPP);
+            appintent = PendingIntent.getService(getActivity(), 1234, apintent, 0);
+
+            alarm.setRepeating(AlarmManager.RTC_WAKEUP, System.currentTimeMillis(), delay, appintent);
 
             //mNM = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
             // Display a notification about us starting.  We put an icon in the status bar.
@@ -157,6 +173,12 @@ public class LinuxLogFragment extends Fragment implements View.OnClickListener {
             }
 
             alarm.cancel(pintent);
+
+            apintent = new Intent(getActivity(), AppInfoService.class);
+            apintent.setAction(AppInfoService.ACTION_GETAPP);
+            appintent = PendingIntent.getService(getActivity(), 1234, apintent, PendingIntent.FLAG_CANCEL_CURRENT);
+
+            alarm.cancel(appintent);
             ((MyMainActivity) getActivity()).cancelNotification();
             netDevRunning = 0;
         }
