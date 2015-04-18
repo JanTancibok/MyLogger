@@ -13,10 +13,13 @@ import android.os.Environment;
 import android.text.format.Time;
 import android.util.Log;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.RandomAccessFile;
 import java.util.ArrayList;
 import java.util.List;
@@ -41,6 +44,7 @@ public class AppInfoService extends IntentService {
     private final String serviceinfo_file = "service_info.csv";
     private final String rcvinfo_file = "receiver_info.csv";
     private final String RUNAPP_FILE = "running_app#_list.csv";
+    private final String CPU_INFO = "cpu_info.csv";
 
     public AppInfoService() {
         super("AppInfoService");
@@ -102,6 +106,7 @@ public class AppInfoService extends IntentService {
                 File logfile = new File(file2.getAbsolutePath() + "/" + applog_file);
                 if (!logfile.exists()) {
                     logAppInfo(file2);
+                    logCPU(file2);
                 }
                 //else instaled apps are atualised by broadcast receiveer
 
@@ -203,6 +208,35 @@ public class AppInfoService extends IntentService {
         appendToFile(serLB.toString(), file2.getAbsolutePath() + "/" + serviceinfo_file);
     }
 
+    private void logCPU(File fio){
+        try {
+            BufferedReader reader = new BufferedReader(new
+                    InputStreamReader(new
+                    FileInputStream("/proc/cpuinfo")), 2048);
+            String line;
+            String[] toks;
+            String[] words;
+            StringBuilder cpuBuff = new StringBuilder("cpuid;BogoMIPS");
+            int nocores =0;
+            while ((line = reader.readLine()) != null) {
+                toks = line.split(" ");
+                words = toks[0].split("\t");
+
+                if (words[0].equals("BogoMIPS")) {
+                    cpuBuff.append("cpu"+nocores);
+                    cpuBuff.append(";");
+                    cpuBuff.append(Double.parseDouble(toks[1]));
+                    cpuBuff.append("\n");
+                    nocores++;
+                }
+            }
+            appendToFile(cpuBuff.toString(), fio.getAbsolutePath() + "/" + CPU_INFO);
+            reader.close();
+        } catch (IOException ioe) {
+            Log.e(TAG, "Parse /proc/cpuinfo", ioe);
+        }
+    }
+
     private void logactualRunningApps() {
         ActivityManager manager = (ActivityManager) getSystemService(ACTIVITY_SERVICE);
         List<ActivityManager.RunningAppProcessInfo> runningProcesses = manager.getRunningAppProcesses();
@@ -252,9 +286,7 @@ public class AppInfoService extends IntentService {
                 for (int n : pids) {
                     poleintov[i++] = n;
                 }
-
                 Debug.MemoryInfo mei[] = manager.getProcessMemoryInfo(poleintov);
-
 
                 i = 0;
                 for (ActivityManager.RunningAppProcessInfo pi : runningProcesses) {
@@ -263,25 +295,41 @@ public class AppInfoService extends IntentService {
                     StringBuilder uidLine = new StringBuilder();
 
                     if (!procesfile.exists()) {
-                        uidLine.append("Time;Pid;sTime;uTime;MemoryInfo-dalvikPrivateDirty;dalvikPss;dalvikSharedDirty;" +
+                        uidLine.append("Time;Name;Pid;State;ppid;uTime;sTime;cutime;cstime;starttime;virtualmem;rss;" +
+                                "MemoryInfo-dalvikPrivateDirty;dalvikPss;dalvikSharedDirty;" +
                                 "nativePrivateDirty;nativePss;nativeSharedDirty;otherPrivateDirty;otherPss;otherSharedDirty" +
                                 "TotalPrivateDirty;TotalSharedDirty\n");
                     }
 
+                    uidLine.append(now.format2445());//time of call this method
+
                     RandomAccessFile rifle = null;
                     try {
                         rifle = new RandomAccessFile("/proc/" + poleintov[i] + "/stat", "r");
-                        uidLine.append(rifle.readInt() + ";");
+                        String line = rifle.readLine();
                         rifle.close();
+                        String[] stat = line.split("\\s");
 
-                        rifle = new RandomAccessFile("/proc/" + poleintov[i] + "/stat", "r");
-                        uidLine.append(rifle.readInt() + ";");
-                        rifle.close();
+                        if(Integer.decode(stat[0])!=poleintov[i]){
+                            Log.e(TAG,"Something is wrong: "+stat[0]+" != "+poleintov[i]);
+                        }
 
+                        uidLine.append(stat[0] + ";");//pid
+                        uidLine.append(stat[1] + ";");//name
+                        uidLine.append(stat[2] + ";");//state R  Running, S  Sleeping, D  Waiting disk sleep, Z  Zombie, T  Stopped
+                        uidLine.append(stat[3] + ";");//parent pid
+                        uidLine.append(stat[14] + ";");//utime
+                        uidLine.append(stat[15] + ";");//stime
+                        uidLine.append(stat[16] + ";");//cutime
+                        uidLine.append(stat[17] + ";");//cstime
+                        uidLine.append(stat[22] + ";");//starttime
+                        uidLine.append(stat[23] + ";");//virtual mem
+                        uidLine.append(stat[24] + ";");//rss
+                        //(36) nswap
+                        //(37) cnswap
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
-
 
                     uidLine.append(mei[i].dalvikPrivateDirty);
                     uidLine.append(mei[i].dalvikPss);
@@ -296,6 +344,8 @@ public class AppInfoService extends IntentService {
                     //kikat uidLine.append(mei[i].getTotalSharedClean());
                     uidLine.append(mei[i].getTotalPrivateDirty());
                     uidLine.append(mei[i].getTotalSharedDirty());
+
+                    appendToFile(uidLine.toString(),procesfile.getPath());
 
                     i++;
                 }
