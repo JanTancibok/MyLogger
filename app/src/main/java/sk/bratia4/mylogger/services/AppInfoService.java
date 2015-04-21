@@ -33,8 +33,11 @@ public class AppInfoService extends IntentService {
     public static final String ACTION_GETAPP = "sk.bratia4.mylogger.services.action.AppLog";
     public static final String ACTION_UPDATEAPP = "sk.bratia4.mylogger.services.action.AppLogUpdate";
     public static final String ACTION_RUNAPP = "sk.bratia4.mylogger.services.action.AppLogRun";
+    public static final String ACTION_REMOVEAPP = "sk.bratia4.mylogger.services.action.AppLogRemoved";
 
-    private static final String PARAM1 = "sk.bratia4.mylogger.services.extra.PARAM1";
+    public static final String EXTRA_DATA_REMOVED = "sk.bratia4.mylogger.services.extra.DATA_REMOVED";
+    public static final String EXTRA_UID = "sk.bratia4.mylogger.services.extra.UID";
+    public static final String EXTRA_REPLACE = "sk.bratia4.mylogger.services.extra.REPLACE";
     private static final String TAG = "AppInfo_Log";
 
     private final String applog_dir = "app";
@@ -45,6 +48,7 @@ public class AppInfoService extends IntentService {
     private final String rcvinfo_file = "receiver_info.csv";
     private final String RUNAPP_FILE = "running_app#_list.csv";
     private final String CPU_INFO = "cpu_info.csv";
+    private final String REMOVED_APPS = "removed_apps.csv";
 
     public AppInfoService() {
         super("AppInfoService");
@@ -55,11 +59,23 @@ public class AppInfoService extends IntentService {
         if (intent != null) {
             final String action = intent.getAction();
             if (ACTION_GETAPP.equals(action)) {
-                final String param1 = intent.getStringExtra(PARAM1);
-                startAppLog(param1);
+                startAppLog();
             }
             if (ACTION_RUNAPP.equals(action)) {
                 this.logactualRunningApps();
+            }
+            if (ACTION_UPDATEAPP.equals(action)) {
+                final int param1 = intent.getIntExtra(EXTRA_UID, -1);
+                final boolean param2 = intent.getBooleanExtra(EXTRA_REPLACE, false);
+                File pathToSd = Environment.getExternalStorageDirectory();
+                if (isExternalStorageWritable()) {
+                    logAppInfo(new File(pathToSd,"LOGS/" + applog_dir), param1); //applog dir should be created already
+                }
+            }
+            if (ACTION_REMOVEAPP.equals(action)) {
+                final int param1 = intent.getIntExtra(EXTRA_UID, -1);
+                final boolean param2 = intent.getBooleanExtra(EXTRA_DATA_REMOVED, false);
+                this.logRemovedApp(param1,param2);
             }
         }
     }
@@ -90,7 +106,7 @@ public class AppInfoService extends IntentService {
      * Handle action in the provided background thread with the provided
      * parameters.
      */
-    private void startAppLog(String param1) {
+    private void startAppLog() {
         Log.d(TAG, "app log running");
 
         if (isExternalStorageWritable()) {
@@ -105,107 +121,171 @@ public class AppInfoService extends IntentService {
             } else {
                 File logfile = new File(file2.getAbsolutePath() + "/" + applog_file);
                 if (!logfile.exists()) {
-                    logAppInfo(file2);
-                    logCPU(file2);
+                    logAppInfo(file2,-1);
+                    logCPU(file);
                 }
                 //else instaled apps are atualised by broadcast receiveer
 
                 logactualRunningApps();
-
             }
         } else {
             Log.e(TAG, "Cant write to SDcard");
         }
     }
 
-    private void logAppInfo(File file2) {
+
+
+    private String parse_packadgeInfo(PackageInfo packageInfo){
+       Time now = new Time("UTC");
+       now.setToNow();
+       StringBuilder lineBuff = new StringBuilder();
+
+       lineBuff.append(now.format2445() + ";");
+       lineBuff.append(packageInfo.applicationInfo.uid);
+       lineBuff.append(";");
+       lineBuff.append(packageInfo.packageName);
+       lineBuff.append(";");
+       lineBuff.append(packageInfo.applicationInfo.className);
+       lineBuff.append(";");
+       lineBuff.append(packageInfo.applicationInfo.permission);
+       lineBuff.append(";");
+       lineBuff.append(packageInfo.lastUpdateTime);
+       lineBuff.append("\n");
+
+       return lineBuff.toString();
+    }
+
+    private String parse_activity(PackageInfo packageInfo){
+        StringBuilder appLB = new StringBuilder();
+        Time now = new Time("UTC");
+        now.setToNow();
+        if (packageInfo.activities != null) {
+            for (ActivityInfo ai : packageInfo.activities) {
+                appLB.append(now.format2445() + ";");
+                appLB.append(ai.applicationInfo.uid);
+                appLB.append(";");
+                appLB.append(ai.name);
+                appLB.append("\n");
+            }
+        }
+        return appLB.toString();
+    }
+
+    private String parse_service(PackageInfo packageInfo){
+        StringBuilder serLB = new StringBuilder();
+        Time now = new Time("UTC");
+        now.setToNow();
+        if (packageInfo.services != null) {
+            for (ServiceInfo ai : packageInfo.services) {
+                serLB.append(now.format2445() + ";");
+                serLB.append(ai.applicationInfo.uid + ";");
+                serLB.append(ai.name + "\n");
+            }
+        }
+        return serLB.toString();
+    }
+
+    private String parse_permission(PackageInfo packageInfo){
+        StringBuilder perLB = new StringBuilder();
+        Time now = new Time("UTC");
+        now.setToNow();
+        if (packageInfo.permissions != null) {
+            for (PermissionInfo ai : packageInfo.permissions) {
+                perLB.append(now.format2445() + ";");
+                perLB.append(packageInfo.applicationInfo.uid);
+                perLB.append(";");
+                perLB.append(ai.packageName);
+                perLB.append(";");
+                perLB.append(ai.name);
+                perLB.append(";");
+                perLB.append(ai.group);
+                perLB.append(";");
+                perLB.append(ai.nonLocalizedDescription);
+                perLB.append("\n");
+            }
+        }
+        return perLB.toString();
+    }
+    private String parse_receivers(PackageInfo packageInfo){
+        StringBuilder recLB = new StringBuilder();
+        Time now = new Time("UTC");
+        now.setToNow();
+        if (packageInfo.receivers != null) {
+            for (ActivityInfo ai : packageInfo.receivers) {
+                recLB.append(now.format2445() + ";");
+                recLB.append(packageInfo.applicationInfo.uid + ";");
+                recLB.append(ai.packageName + ";");
+                recLB.append(ai.name + ";");
+                recLB.append(ai.permission + ";");
+                recLB.append(ai.targetActivity + ";");
+                recLB.append(ai.taskAffinity + ";");
+                recLB.append(ai.processName + ";");
+                recLB.append("\n");
+            }
+        }
+        return recLB.toString();
+    }
+
+    private void logAppInfo(File directory, int uid) {
         StringBuilder lineBuff = new StringBuilder();
         StringBuilder perLB = new StringBuilder();
         StringBuilder recLB = new StringBuilder();
         StringBuilder appLB = new StringBuilder();
         StringBuilder serLB = new StringBuilder();
 
-        lineBuff.append("TimeUTC;UID;Name;ClasName;Permission;lastUpdateTime");
-        perLB.append("TimeUTC;UID;packadgeName;name;group");
-        recLB.append("TimeUTC;UID;packadgeName;name;permission;TargetActivity;taskAffinity;processName");
-        appLB.append("TimeUTC;UID;name");
-        serLB.append("TimeUTC;UID;name");
-
-        Time now = new Time("UTC");
-        now.setToNow();
-
         PackageManager pm = getPackageManager();
-        List<PackageInfo> packages = pm.getInstalledPackages(PackageManager.GET_ACTIVITIES);
-        List<PackageInfo> packagesSR = pm.getInstalledPackages(PackageManager.GET_RECEIVERS + PackageManager.GET_SERVICES + PackageManager.GET_META_DATA + PackageManager.GET_PERMISSIONS);
 
-        //GET_UNINSTALLED_PACKAGES
-        for (PackageInfo packageInfo : packages) {
-            lineBuff.append(now.format2445() + ";");
-            lineBuff.append(packageInfo.applicationInfo.uid);
-            lineBuff.append(";");
-            lineBuff.append(packageInfo.packageName);
-            lineBuff.append(";");
-            lineBuff.append(packageInfo.applicationInfo.className);
-            lineBuff.append(";");
-            lineBuff.append(packageInfo.applicationInfo.permission);
-            lineBuff.append(";");
-            lineBuff.append(packageInfo.lastUpdateTime);
-            lineBuff.append("\n");
+        if (uid==-1) {
+            lineBuff.append("TimeUTC;UID;Name;ClasName;Permission;lastUpdateTime\n");
+            perLB.append("TimeUTC;UID;packadgeName;name;group\n");
+            recLB.append("TimeUTC;UID;packadgeName;name;permission;TargetActivity;taskAffinity;processName\n");
+            appLB.append("TimeUTC;UID;name\n");
+            serLB.append("TimeUTC;UID;name\n");
 
-            if (packageInfo.activities != null) {
-                for (ActivityInfo ai : packageInfo.activities) {
-                    appLB.append(now.format2445() + ";");
-                    appLB.append(ai.applicationInfo.uid);
-                    appLB.append(";");
-                    appLB.append(ai.name);
-                    appLB.append("\n");
+            List<PackageInfo> packages = pm.getInstalledPackages(PackageManager.GET_ACTIVITIES);
+            List<PackageInfo> packagesSR = pm.getInstalledPackages(PackageManager.GET_RECEIVERS + PackageManager.GET_SERVICES + PackageManager.GET_META_DATA + PackageManager.GET_PERMISSIONS);
+
+            //GET_UNINSTALLED_PACKAGES
+            for (PackageInfo packageInfo : packages) {
+                lineBuff.append(parse_packadgeInfo(packageInfo));
+                appLB.append(parse_activity(packageInfo));
+            }
+
+            for (PackageInfo packageInfo : packagesSR) {
+                serLB.append(parse_service(packageInfo));
+                perLB.append(parse_permission(packageInfo));
+                recLB.append(parse_receivers(packageInfo));
+            }
+        }else{
+            //uid!=-1 we are doing update
+            PackageInfo packageInfo = null;
+            String packadgeName = "";
+
+            List<PackageInfo> packages = pm.getInstalledPackages(PackageManager.GET_META_DATA);
+            for (PackageInfo pi : packages) {
+                if(pi.applicationInfo.uid==uid){
+                    packadgeName = pi.packageName;
+                    break;
                 }
             }
-        }
-        for (PackageInfo packageInfo : packagesSR) {
-                        /*List<ActivityInfo> appInfo = packageInfo*/
-            if (packageInfo.permissions != null) {
-                for (PermissionInfo ai : packageInfo.permissions) {
-                    perLB.append(now.format2445() + ";");
-                    perLB.append(packageInfo.applicationInfo.uid);
-                    perLB.append(";");
-                    perLB.append(ai.packageName);
-                    perLB.append(";");
-                    perLB.append(ai.name);
-                    perLB.append(";");
-                    perLB.append(ai.group);
-                    perLB.append(";");
-                    perLB.append(ai.nonLocalizedDescription);
-                    perLB.append("\n");
-                }
-            }
-            if (packageInfo.services != null) {
-                for (ServiceInfo ai : packageInfo.services) {
-                    serLB.append(now.format2445() + ";");
-                    serLB.append(ai.applicationInfo.uid + ";");
-                    serLB.append(ai.name + "\n");
-                }
-            }
-            if (packageInfo.receivers != null) {
-                for (ActivityInfo ai : packageInfo.receivers) {
-                    recLB.append(now.format2445() + ";");
-                    recLB.append(packageInfo.applicationInfo.uid + ";");
-                    recLB.append(ai.packageName + ";");
-                    recLB.append(ai.name + ";");
-                    recLB.append(ai.permission + ";");
-                    recLB.append(ai.targetActivity + ";");
-                    recLB.append(ai.taskAffinity + ";");
-                    recLB.append(ai.processName + ";");
-                    recLB.append("\n");
-                }
+
+            try {
+                packageInfo = pm.getPackageInfo(packadgeName, PackageManager.GET_ACTIVITIES+PackageManager.GET_RECEIVERS + PackageManager.GET_SERVICES + PackageManager.GET_META_DATA + PackageManager.GET_PERMISSIONS);
+                lineBuff.append(parse_packadgeInfo(packageInfo));
+                appLB.append(parse_activity(packageInfo));
+                serLB.append(parse_service(packageInfo));
+                perLB.append(parse_permission(packageInfo));
+                recLB.append(parse_receivers(packageInfo));
+            } catch (PackageManager.NameNotFoundException e) {
+                e.printStackTrace();
             }
         }
 
-        appendToFile(perLB.toString(), file2.getAbsolutePath() + "/" + perinfo_file);
-        appendToFile(lineBuff.toString(), file2.getAbsolutePath() + "/" + applog_file);
-        appendToFile(recLB.toString(), file2.getAbsolutePath() + "/" + rcvinfo_file);
-        appendToFile(appLB.toString(), file2.getAbsolutePath() + "/" + activityinfo_file);
-        appendToFile(serLB.toString(), file2.getAbsolutePath() + "/" + serviceinfo_file);
+        appendToFile(perLB.toString(), directory.getAbsolutePath() + "/" + perinfo_file);
+        appendToFile(lineBuff.toString(), directory.getAbsolutePath() + "/" + applog_file);
+        appendToFile(recLB.toString(), directory.getAbsolutePath() + "/" + rcvinfo_file);
+        appendToFile(appLB.toString(), directory.getAbsolutePath() + "/" + activityinfo_file);
+        appendToFile(serLB.toString(), directory.getAbsolutePath() + "/" + serviceinfo_file);
     }
 
     private void logCPU(File fio){
@@ -216,7 +296,7 @@ public class AppInfoService extends IntentService {
             String line;
             String[] toks;
             String[] words;
-            StringBuilder cpuBuff = new StringBuilder("cpuid;BogoMIPS");
+            StringBuilder cpuBuff = new StringBuilder("cpuid;BogoMIPS\n");
             int nocores =0;
             while ((line = reader.readLine()) != null) {
                 toks = line.split(" ");
@@ -331,19 +411,20 @@ public class AppInfoService extends IntentService {
                         e.printStackTrace();
                     }
 
-                    uidLine.append(mei[i].dalvikPrivateDirty);
-                    uidLine.append(mei[i].dalvikPss);
-                    uidLine.append(mei[i].dalvikSharedDirty);
-                    uidLine.append(mei[i].nativePrivateDirty);
-                    uidLine.append(mei[i].nativePss);
-                    uidLine.append(mei[i].nativeSharedDirty);
-                    uidLine.append(mei[i].otherPrivateDirty);
-                    uidLine.append(mei[i].otherPss);
-                    uidLine.append(mei[i].otherSharedDirty);
+                    uidLine.append(mei[i].dalvikPrivateDirty);uidLine.append(";");
+                    uidLine.append(mei[i].dalvikPss);uidLine.append(";");
+                    uidLine.append(mei[i].dalvikSharedDirty);uidLine.append(";");
+                    uidLine.append(mei[i].nativePrivateDirty);uidLine.append(";");
+                    uidLine.append(mei[i].nativePss);uidLine.append(";");
+                    uidLine.append(mei[i].nativeSharedDirty);uidLine.append(";");
+                    uidLine.append(mei[i].otherPrivateDirty);uidLine.append(";");
+                    uidLine.append(mei[i].otherPss);uidLine.append(";");
+                    uidLine.append(mei[i].otherSharedDirty);uidLine.append(";");
                     //kikat uidLine.append(mei[i].getTotalPrivateClean());
                     //kikat uidLine.append(mei[i].getTotalSharedClean());
-                    uidLine.append(mei[i].getTotalPrivateDirty());
+                    uidLine.append(mei[i].getTotalPrivateDirty());uidLine.append(";");
                     uidLine.append(mei[i].getTotalSharedDirty());
+                    uidLine.append("\n");
 
                     appendToFile(uidLine.toString(),procesfile.getPath());
 
@@ -353,6 +434,19 @@ public class AppInfoService extends IntentService {
             } else Log.d(TAG, "Non writable storage");
         } else {
             Log.d(TAG, "No app is running");
+        }
+    }
+
+    private void logRemovedApp(int uid, boolean dataremoved){
+        File pathToSd = Environment.getExternalStorageDirectory();
+        if (isExternalStorageWritable()) {
+            File logfile = new File(pathToSd+"/LOGS/"+applog_dir+"/"+REMOVED_APPS);
+            if (!logfile.exists()) {
+                appendToFile("Time;UID;DataRemoved\n",logfile.getPath());
+            }
+            Time now = new Time("UTC");
+            now.setToNow();
+            appendToFile(now.format2445()+";"+String.valueOf(uid)+";"+String.valueOf(dataremoved)+"\n",logfile.getPath());
         }
     }
 }

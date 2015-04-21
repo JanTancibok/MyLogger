@@ -51,6 +51,18 @@
             android:name=".services.AppInfoService"
             android:exported="false" >
         </service>
+
+        <receiver
+            android:name=".receivers.PackadgeChangeReceiver"
+            android:enabled="true"
+            android:exported="true" >
+            <intent-filter>
+                <action android:name="android.intent.action.PACKAGE_ADDED" />
+                <action android:name="android.intent.action.PACKAGE_REMOVED" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="package"/>
+            </intent-filter>
+        </receiver>
     </application>
 
 </manifest>
