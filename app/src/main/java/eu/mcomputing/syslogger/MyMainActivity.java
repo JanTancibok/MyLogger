@@ -1,4 +1,4 @@
-package sk.bratia4.mylogger;
+package eu.mcomputing.syslogger;
 
 import android.app.Notification;
 import android.app.NotificationManager;
@@ -19,10 +19,10 @@ import android.support.v4.app.Fragment;
 import java.util.List;
 import android.os.Handler;
 
-import sk.bratia4.mylogger.screen.LinuxLogFragment;
-import sk.bratia4.mylogger.screen.LogCatFragment;
-import sk.bratia4.mylogger.screen.MenuFragment;
-import sk.bratia4.mylogger.services.LoggerService;
+import eu.mcomputing.syslogger.screen.LinuxLogFragment;
+import eu.mcomputing.syslogger.screen.LogCatFragment;
+import eu.mcomputing.syslogger.screen.MenuFragment;
+import eu.mcomputing.syslogger.services.LoggerService;
 
 
 public class MyMainActivity extends FragmentActivity implements LogCatFragment.OnFragmentInteractionListener, LinuxLogFragment.OnFragmentInteractionListener {

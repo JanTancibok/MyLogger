@@ -1,12 +1,11 @@
-package sk.bratia4.mylogger.receivers;
+package eu.mcomputing.syslogger.receivers;
 
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.os.Bundle;
 import android.util.Log;
 
-import sk.bratia4.mylogger.services.AppInfoService;
+import eu.mcomputing.syslogger.services.AppInfoService;
 
 public class PackadgeChangeReceiver extends BroadcastReceiver {
     public PackadgeChangeReceiver() {

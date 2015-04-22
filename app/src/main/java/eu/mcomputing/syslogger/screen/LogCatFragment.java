@@ -1,4 +1,4 @@
-package sk.bratia4.mylogger.screen;
+package eu.mcomputing.syslogger.screen;
 
 import android.app.Activity;
 import android.net.Uri;
@@ -17,7 +17,7 @@ import java.util.Scanner;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import sk.bratia4.mylogger.R;
+import eu.mcomputing.syslogger.R;
 
 /**
  * A simple {@link Fragment} subclass.

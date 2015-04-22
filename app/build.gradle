@@ -5,7 +5,7 @@ android {
     buildToolsVersion "20.0.0"
 
     defaultConfig {
-        applicationId "sk.bratia4.mylogger"
+        applicationId "sk.mcomputing.mylogger"
         minSdkVersion 10
         targetSdkVersion 21
         versionCode 1

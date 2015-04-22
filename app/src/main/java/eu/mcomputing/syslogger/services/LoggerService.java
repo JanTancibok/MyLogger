@@ -1,4 +1,4 @@
-package sk.bratia4.mylogger.services;
+package eu.mcomputing.syslogger.services;
 
 import android.app.Notification;
 import android.app.NotificationManager;
@@ -19,9 +19,9 @@ import java.util.ArrayList;
 
 import android.os.Handler;
 
-import sk.bratia4.mylogger.MyMainActivity;
-import sk.bratia4.mylogger.R;
-import sk.bratia4.mylogger.screen.LogCatFragment;
+import eu.mcomputing.syslogger.MyMainActivity;
+import eu.mcomputing.syslogger.R;
+import eu.mcomputing.syslogger.screen.LogCatFragment;
 
 public class LoggerService extends Service {
     private NotificationManager mNM;

@@ -1,4 +1,4 @@
-package sk.bratia4.mylogger.services;
+package eu.mcomputing.syslogger.services;
 
 import android.app.ActivityManager;
 import android.app.IntentService;
@@ -16,13 +16,13 @@ import android.util.Log;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.RandomAccessFile;
 import java.util.ArrayList;
 import java.util.List;
+
+import static eu.mcomputing.syslogger.utils.FileWriteUtil.*;
 
 /**
  * An {@link IntentService} subclass for handling asynchronous task requests in
@@ -30,14 +30,14 @@ import java.util.List;
  */
 public class AppInfoService extends IntentService {
     // IntentService can perform, e.g. ACTION_FETCH_NEW_ITEMS
-    public static final String ACTION_GETAPP = "sk.bratia4.mylogger.services.action.AppLog";
-    public static final String ACTION_UPDATEAPP = "sk.bratia4.mylogger.services.action.AppLogUpdate";
-    public static final String ACTION_RUNAPP = "sk.bratia4.mylogger.services.action.AppLogRun";
-    public static final String ACTION_REMOVEAPP = "sk.bratia4.mylogger.services.action.AppLogRemoved";
+    public static final String ACTION_GETAPP = "sk.mcomputing.mylogger.services.action.AppLog";
+    public static final String ACTION_UPDATEAPP = "sk.mcomputing.mylogger.services.action.AppLogUpdate";
+    public static final String ACTION_RUNAPP = "sk.mcomputing.mylogger.services.action.AppLogRun";
+    public static final String ACTION_REMOVEAPP = "sk.mcomputing.mylogger.services.action.AppLogRemoved";
 
-    public static final String EXTRA_DATA_REMOVED = "sk.bratia4.mylogger.services.extra.DATA_REMOVED";
-    public static final String EXTRA_UID = "sk.bratia4.mylogger.services.extra.UID";
-    public static final String EXTRA_REPLACE = "sk.bratia4.mylogger.services.extra.REPLACE";
+    public static final String EXTRA_DATA_REMOVED = "sk.mcomputing.mylogger.services.extra.DATA_REMOVED";
+    public static final String EXTRA_UID = "sk.mcomputing.mylogger.services.extra.UID";
+    public static final String EXTRA_REPLACE = "sk.mcomputing.mylogger.services.extra.REPLACE";
     private static final String TAG = "AppInfo_Log";
 
     private final String applog_dir = "app";
@@ -77,28 +77,6 @@ public class AppInfoService extends IntentService {
                 final boolean param2 = intent.getBooleanExtra(EXTRA_DATA_REMOVED, false);
                 this.logRemovedApp(param1,param2);
             }
-        }
-    }
-
-    public boolean isExternalStorageWritable() {
-        String state = Environment.getExternalStorageState();
-        if (Environment.MEDIA_MOUNTED.equals(state)) {
-            return true;
-        }
-        return false;
-    }
-
-    private void appendToFile(String what, String path) {
-        try {
-            File logfile = new File(path);
-            FileOutputStream stream = new FileOutputStream(logfile, true);
-            try {
-                stream.write(what.getBytes());
-            } finally {
-                stream.close();
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
         }
     }
 
@@ -442,11 +420,11 @@ public class AppInfoService extends IntentService {
         if (isExternalStorageWritable()) {
             File logfile = new File(pathToSd+"/LOGS/"+applog_dir+"/"+REMOVED_APPS);
             if (!logfile.exists()) {
-                appendToFile("Time;UID;DataRemoved\n",logfile.getPath());
+                appendToFile("Time;UID;DataRemoved\n", logfile.getPath());
             }
             Time now = new Time("UTC");
             now.setToNow();
-            appendToFile(now.format2445()+";"+String.valueOf(uid)+";"+String.valueOf(dataremoved)+"\n",logfile.getPath());
+            appendToFile(now.format2445() + ";" + String.valueOf(uid) + ";" + String.valueOf(dataremoved) + "\n", logfile.getPath());
         }
     }
 }

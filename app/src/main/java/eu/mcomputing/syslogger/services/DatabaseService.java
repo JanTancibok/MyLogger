@@ -1,4 +1,4 @@
-package sk.bratia4.mylogger;
+package eu.mcomputing.syslogger.services;
 
 import android.app.IntentService;
 import android.content.Intent;
@@ -14,12 +14,12 @@ import android.content.Context;
 public class DatabaseService extends IntentService {
     // TODO: Rename actions, choose action names that describe tasks that this
     // IntentService can perform, e.g. ACTION_FETCH_NEW_ITEMS
-    private static final String ACTION_FOO = "sk.bratia4.mylogger.action.FOO";
-    private static final String ACTION_BAZ = "sk.bratia4.mylogger.action.BAZ";
+    private static final String ACTION_FOO = "sk.mcomputing.mylogger.action.FOO";
+    private static final String ACTION_BAZ = "sk.mcomputing.mylogger.action.BAZ";
 
     // TODO: Rename parameters
-    private static final String EXTRA_PARAM1 = "sk.bratia4.mylogger.extra.PARAM1";
-    private static final String EXTRA_PARAM2 = "sk.bratia4.mylogger.extra.PARAM2";
+    private static final String EXTRA_PARAM1 = "sk.mcomputing.mylogger.extra.PARAM1";
+    private static final String EXTRA_PARAM2 = "sk.mcomputing.mylogger.extra.PARAM2";
 
     /**
      * Starts this service to perform action Foo with the given parameters. If

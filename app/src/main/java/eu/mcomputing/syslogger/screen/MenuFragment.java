@@ -1,9 +1,5 @@
-package sk.bratia4.mylogger.screen;
+package eu.mcomputing.syslogger.screen;
 
-import android.app.AlarmManager;
-import android.app.PendingIntent;
-import android.content.Context;
-import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
@@ -12,9 +8,8 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 
-import sk.bratia4.mylogger.MyMainActivity;
-import sk.bratia4.mylogger.R;
-import sk.bratia4.mylogger.services.NetDevService;
+import eu.mcomputing.syslogger.MyMainActivity;
+import eu.mcomputing.syslogger.R;
 
 /**
  * A simple {@link Fragment} subclass.

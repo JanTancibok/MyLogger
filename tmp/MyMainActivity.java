@@ -1,4 +1,4 @@
-package sk.bratia4.mylogger;
+package eu.mcomputing.syslogger;
 
 import android.app.ListActivity;
 import android.content.ComponentName;

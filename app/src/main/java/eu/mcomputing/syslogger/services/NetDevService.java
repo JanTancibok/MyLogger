@@ -1,4 +1,4 @@
-package sk.bratia4.mylogger.services;
+package eu.mcomputing.syslogger.services;
 
 import android.app.IntentService;
 import android.content.Context;
@@ -12,12 +12,13 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.RandomAccessFile;
 import java.util.ArrayList;
 import java.util.StringTokenizer;
+
+import static eu.mcomputing.syslogger.utils.FileWriteUtil.*;
 
 /**
  * Created by Janko on 4/9/2015.
@@ -30,28 +31,6 @@ public class NetDevService extends IntentService {
     public NetDevService() {
         super(NetDevService.class.getName());
         setIntentRedelivery(true);
-    }
-
-    public boolean isExternalStorageWritable() {
-        String state = Environment.getExternalStorageState();
-        if (Environment.MEDIA_MOUNTED.equals(state)) {
-            return true;
-        }
-        return false;
-    }
-
-    private void appendToFile(String what, String path){
-        try {
-            File logfile = new File(path);
-            FileOutputStream stream = new FileOutputStream(logfile, true);
-            try {
-                stream.write(what.getBytes());
-            } finally {
-                stream.close();
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
     }
 
     public void getNetDev(String devfile)

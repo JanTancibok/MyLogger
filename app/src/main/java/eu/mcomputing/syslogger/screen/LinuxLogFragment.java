@@ -1,4 +1,4 @@
-package sk.bratia4.mylogger.screen;
+package eu.mcomputing.syslogger.screen;
 
 import android.app.Activity;
 import android.app.AlarmManager;
@@ -15,10 +15,10 @@ import android.view.ViewGroup;
 import android.widget.TextView;
 import android.widget.ToggleButton;
 
-import sk.bratia4.mylogger.MyMainActivity;
-import sk.bratia4.mylogger.R;
-import sk.bratia4.mylogger.services.AppInfoService;
-import sk.bratia4.mylogger.services.NetDevService;
+import eu.mcomputing.syslogger.MyMainActivity;
+import eu.mcomputing.syslogger.R;
+import eu.mcomputing.syslogger.services.AppInfoService;
+import eu.mcomputing.syslogger.services.NetDevService;
 
 /**
  * A simple {@link Fragment} subclass.
