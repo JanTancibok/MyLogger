@@ -10,7 +10,9 @@
     <string name="virdir_service_name">Virtual directory spoofing service</string>
     <string name="virdir_service_started">Virtual directory spoofing started</string>
     <string name="virdir_service_stopped">Virtual directory spoofing STOPped</string>
-    <string name="hello_blank_fragment">Hello blank fragment</string>
+    <string name="VPN_service_started">VPN is started</string>
+    <string name="VPN_service_stopped">VPN is STOPped</string>
+    <string name="hello_blank_fragment">VPN fragment cockpit</string>
 
     <string name="toggle_turn_on">Start LinuxLog</string>
     <string name="toggle_turn_off">Stop LinuxLog</string>
@@ -18,5 +20,7 @@
     <string name="linux_loging">proc/ loging</string>
     <string name="adb_loging">adb loging</string>
     <string name="stop_all">Stop all</string>
+    <string name="VPN_log">VPN PACKET LOG</string>
+    <string name="disconnected">Disconnected vpn</string>
 
 </resources>

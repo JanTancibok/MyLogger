@@ -31,6 +31,13 @@
     <Button
         android:layout_width="150dp"
         android:layout_height="wrap_content"
+        android:text="@string/VPN_log"
+        android:id="@+id/button_menu_vpn"
+        android:layout_gravity="center_horizontal"/>
+
+    <Button
+        android:layout_width="150dp"
+        android:layout_height="wrap_content"
         android:text="@string/stop_all"
         android:id="@+id/button3"
         android:layout_gravity="center_horizontal"/>

@@ -4,9 +4,14 @@ import android.app.IntentService;
 import android.content.Context;
 import android.content.Intent;
 import android.net.ConnectivityManager;
+import android.os.AsyncTask;
 import android.os.Environment;
 import android.text.format.Time;
+import android.util.Base64;
 import android.util.Log;
+
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -15,8 +20,20 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.RandomAccessFile;
+import java.net.InetAddress;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Scanner;
 import java.util.StringTokenizer;
+
+import eu.mcomputing.syslogger.MyMainActivity;
+import eu.mcomputing.syslogger.screen.LinuxLogFragment;
+import eu.mcomputing.syslogger.utils.CommandRunner;
+import eu.mcomputing.syslogger.utils.FileWriteUtil;
+import eu.mcomputing.syslogger.utils.IpAdressHex2Dec;
+import eu.mcomputing.syslogger.utils.MyDBAdapter;
 
 import static eu.mcomputing.syslogger.utils.FileWriteUtil.*;
 
@@ -26,7 +43,16 @@ import static eu.mcomputing.syslogger.utils.FileWriteUtil.*;
 public class NetDevService extends IntentService {
     private static final String TAG = "mylogger.NetDevService";
     private static final String MEMINFO_PATH = "/proc/meminfo";
+    private static final String NMAP_COMMAND = "./nmap ";
+    private static final String LOG_DIR = "LOGS";
+    private static final String TCP_HEADER = "uid;loc_address;rem_address;state;inode;tx:rx\n";
+    private static final String[] TCP_HEAD_AR = {"time","uid","state","loc_address","loc_port","rem_address","rem_port","inode","tx:rx"};
+    private static final String TCP_PATH = "tcp_log.csv";
+    private static final String UDP_PATH = "udp_log.csv";
+    private static final String TCP6_PATH = "tcp6_log.csv";
+    private static final String UDP6_PATH = "udp6_log.csv";
     private String TYPE = "";
+    private String dev_id = "noname_con";
 
     public NetDevService() {
         super(NetDevService.class.getName());
@@ -195,11 +221,216 @@ public class NetDevService extends IntentService {
             if(mobile.isConnected()){TYPE="mobil";}
         }
 
+        dev_id = intent.getStringExtra(LinuxLogFragment.DEVICE_ID);
+
         if(!TYPE.equals("")) {
-            getNetDev("/proc/net/dev");
+            getNetTCP("/proc/net/tcp", "TCP");//TCP_PATH);
+            getNetTCP("/proc/net/udp", "UDP");//UDP_PATH);
             parseUids();
+            getNetTCP("/proc/net/udp6", "UDP6");//UDP6_PATH);
+            getNetDev("/proc/net/dev");
+            getNetTCP("/proc/net/tcp6","TCP6");//TCP6_PATH);
         }
+    }
+
+    private void getNetTCP(String path, String mypath) {
+        StringBuilder stb = new StringBuilder();
+        JSONObject job = new JSONObject();
+        String header = "";
+        Time now = new Time("UTC");
+        now.setToNow();
+
+        try
+        {
+            File tcpfile = new File(path);
+            Scanner scanner = new Scanner(tcpfile);
+
+            //The first two lines of the file are headers
+            header = scanner.nextLine();
+            scanner.nextLine();
+            String line;
+            while((line = scanner.nextLine())!=null) {
+                while (line.startsWith(" ")) {
+                    line = line.substring(1, line.length());
+                }
+                String[] fields = line.split("\\s+");
+                //for(int i=0;i<fields.length;i++) {}
+                //"time","uid","loc_address","loc_port","rem_address","rem_port","state","inode","tx:rx"
+
+                String loca[] = fields[1].split(":");
+                String rema[] = fields[2].split(":");
+
+                //if(mypath.equals("UDP") || mypath.equals("TCP")){
+                    loca[0] = IpAdressHex2Dec.hexa2decIP(loca[0]);
+                    rema[0] = IpAdressHex2Dec.hexa2decIP(rema[0]);
+                //}
+
+                loca[1] = IpAdressHex2Dec.hexa2decPort(loca[1]);
+                rema[1] = IpAdressHex2Dec.hexa2decPort(rema[1]);
+
+                job.put(TCP_HEAD_AR[0], now.format2445());
+                job.put(TCP_HEAD_AR[1], fields[7]);
+                if(FileWriteUtil.states.containsKey(fields[3])) {
+                    job.put(TCP_HEAD_AR[2], FileWriteUtil.states.get(fields[3]));
+                }else{
+                    job.put(TCP_HEAD_AR[2], fields[3]);
+                }
+                job.put(TCP_HEAD_AR[3], loca[0]);
+                job.put(TCP_HEAD_AR[4], loca[1]);
+                job.put(TCP_HEAD_AR[5], rema[0]);
+                job.put(TCP_HEAD_AR[6], rema[1]);
+                job.put(TCP_HEAD_AR[7], fields[9]);
+                job.put(TCP_HEAD_AR[8], fields[4]);
 
 
+                new AsyncCommandExecutor().execute(mypath, job.toString());
+                /*stb.append(fields[7]+";");
+                stb.append(fields[1]+";");//loc
+                stb.append(fields[2]+";");//rem
+                stb.append(fields[3]+";");
+                stb.append(fields[9]+";");
+                stb.append(fields[4]);
+                stb.append("\n");*/
+                //Log.e(TAG, "new linezzzzzzzzzzzzzzzzzzzzzzzz");
+            }
+        }
+        catch (Exception e)
+        {
+            Log.e(TAG, "Exception", e);
+        }
+        finally {
+            //Write with Nmap async
+
+            /*
+            if(isExternalStorageWritable()){
+                // Get the directory for the app's private pictures directory.
+                File pathToSd = Environment.getExternalStorageDirectory();
+                File file = new File(pathToSd, LOG_DIR);
+                if (!file.exists()) {
+                    Log.e(TAG, "Directory not created");
+                }else{
+                    File logfile = new File(file.getAbsolutePath() +"/"+ mypath);
+                    if(!logfile.exists()) {
+                        //write headers one
+
+                        //";socket_ref_count;adress_tosocket;retransmit_timeout;predicted_tick_ACK_controll;ack_pingpong;send_con_window;threshold\n";
+                        appendToFile(headers,logfile.getAbsolutePath());
+                    }
+
+                    appendToFile(stb.toString(),logfile.getAbsolutePath());
+                }
+            }else{
+                Log.e(TAG, "Cant write to SDcard");
+            }*/
+        }
+    }
+
+    /*
+    <string-array name="scan_values_array">
+        <item></item><item>Regular</item>
+        <item>-T4 -A -v</item><item>Intense</item>
+        <item>-T4 -F</item><item>Quick</item>
+        <item>-sn</item><item>Ping</item>
+        <item>-sV -T4 -O -F --version-light</item><item>Quick+</item>
+        <item>-sn --traceroute</item>  <item>Quick+Trace</item>
+        <item>-sS -sU -T4 -A -v</item>   <item>Intense+UDP</item>
+        <item>-p 1-65535 -T4 -A -v</item>     <item>Intense/All</item>
+        <item>-T4 -A -v -Pn</item><item>Intense-Ping</item>
+        <item>-sS -sU -T4 -A -v -PE -PS80,443 -PA3389 -PP -PU40125 -PY --source-port 53 --script "default or (discovery and safe)"</item>  <item>Slow</item>
+    </string-array>*/
+
+    public class AsyncCommandExecutor extends AsyncTask<String, Void, Void> {
+        private JSONObject job;
+        public String mybuffer;
+        private String mypath;
+        private String output = "";
+        String resp = "no";
+        //db or file
+
+        @Override
+        protected Void doInBackground(String... strings) {
+            mypath = strings[0];
+            mybuffer = strings[1];
+            MyDBAdapter mdb=new MyDBAdapter(getApplicationContext());
+            List<String> l;
+            try {
+                job = new JSONObject(strings[1]);
+
+                String ipv6 = "";
+                String ip = job.get(TCP_HEAD_AR[5]).toString();
+                String port = job.get(TCP_HEAD_AR[6]).toString();
+                if(mypath.equals("UDP6") || mypath.equals("TCP6")){
+                    //ipv6 = "-6 ";
+                    ip = ip.substring(0,nthOccurrence(ip,'.',4)-2);
+                }
+
+                //-p"+port+" "
+                l = mdb.getDNas(ip);
+                if(l!=null && l.size()>0){
+                }else {
+                    output = CommandRunner.execCommand(NMAP_COMMAND + ipv6 + "-T5 --top-ports 300 --version-light -R --dns-servers 8.8.8.8 " + ip, MyMainActivity.getbinPath().getAbsoluteFile());
+                    if(output!=null) {
+                        l = new ArrayList<String>();
+                        l.add(ip);
+                        int a = output.indexOf("for ")+4;
+                        int b = nthOccurrence(output,'(',1)-2;
+                        l.add(output.substring( a, b));
+                        l.add(output.substring(output.indexOf("SERVICE") + 8,output.indexOf("\n\n")));
+                        mdb.insertNmaIP(l.get(0), l.get(1), l.get(2));
+                    }
+                }
+                job.put("nmap_name",l.get(1));
+                job.put("nmap_ports",l.get(2));
+
+            } catch (IOException e) {
+                output = "IOException while trying to scan!";
+                Log.d(TAG, e.getMessage());
+            } catch (InterruptedException e) {
+                output = "Nmap Scan Interrupted!";
+                Log.d(TAG, e.getMessage());
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+
+            if(job!=null && job.length()>0){
+                JSONObject request = new JSONObject();
+                try {
+                    job.put("device_id",dev_id);
+                    job.put("protocol",mypath);
+                    request.put("riadok", job);
+                    request.put("method","insertNet");
+                    request.put("table","NET_STAT_ALL");
+
+                    //resp = FileWriteUtil.httpObject(request);
+
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+            }
+            return null;
+        }
+        @Override
+        protected void onPostExecute(Void result) {
+            /*if(isExternalStorageWritable()){
+                // Get the directory for the app's private pictures directory.
+                File pathToSd = Environment.getExternalStorageDirectory();
+                File file = new File(pathToSd, LOG_DIR);
+                if (!file.exists()) {
+                    Log.e(TAG, "Directory not created");
+                }else{
+                    File logfile = new File(file.getAbsolutePath() +"/"+ mypath);
+                    if(!logfile.exists()) {
+                        //write headers one
+
+                        //";socket_ref_count;adress_tosocket;retransmit_timeout;predicted_tick_ACK_controll;ack_pingpong;send_con_window;threshold\n";
+                        appendToFile(TCP_HEADER,logfile.getAbsolutePath());
+                    }
+
+                    appendToFile(mybuffer,logfile.getAbsolutePath());
+                }
+            }else{
+                Log.e(TAG, "Cant write to SDcard");
+            }*/
+        }
     }
 }

@@ -54,6 +54,9 @@ public class MenuFragment extends Fragment implements View.OnClickListener{
         Button button2 = (Button) view.findViewById(R.id.button2);
         button2.setOnClickListener(this);
 
+        Button button4 = (Button) view.findViewById(R.id.button_menu_vpn);
+        button4.setOnClickListener(this);
+
         Button button3 = (Button) view.findViewById(R.id.button3);
         button3.setOnClickListener(this);
 
@@ -78,12 +81,17 @@ public class MenuFragment extends Fragment implements View.OnClickListener{
                     // Restore last state for checked position.
                     Bundle b = new Bundle();
                     b.putInt("run", ((MyMainActivity) getActivity()).getNetDevRunning());
+                    b.putString(LinuxLogFragment.DEVICE_ID, ((MyMainActivity) getActivity()).getDeviceID());
                     fr.setArguments(b);
                 }else fr.setArguments(args);
                 ((MyMainActivity) getActivity()).changeFragment(fr);
                 break;
             case R.id.button2:
                 fr = new LogCatFragment();
+                ((MyMainActivity) getActivity()).changeFragment(fr);
+                break;
+            case R.id.button_menu_vpn:
+                fr = new VPN_fragment();
                 ((MyMainActivity) getActivity()).changeFragment(fr);
                 break;
             case R.id.button3:

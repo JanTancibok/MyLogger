@@ -6,21 +6,30 @@ android {
 
     defaultConfig {
         applicationId "sk.mcomputing.mylogger"
-        minSdkVersion 10
+        minSdkVersion 14
         targetSdkVersion 21
         versionCode 1
         versionName "1.0"
     }
     buildTypes {
         release {
-            runProguard false
+            minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
+    }
+    packagingOptions {
+        exclude 'META-INF/DEPENDENCIES'
+        exclude 'META-INF/NOTICE'
+        exclude 'META-INF/LICENSE'
     }
 }
 
 dependencies {
-    compile fileTree(dir: 'libs', include: ['*.jar'])
+    compile fileTree(include: ['*.jar'], dir: 'libs')
     compile 'com.android.support:appcompat-v7:22.0.0'
     compile 'com.android.support:support-v4:22.0.0'
+    /*compile files('libs/httpcore-4.4.1.jar')
+        compile files('libs/httpmime-4.4.1.jar')*/
+    compile files('libs/httpmime-4.4.1.jar')
+    compile files('libs/httpcore-4.4.1.jar')
 }

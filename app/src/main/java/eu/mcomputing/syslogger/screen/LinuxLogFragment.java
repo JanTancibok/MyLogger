@@ -32,13 +32,11 @@ import eu.mcomputing.syslogger.services.NetDevService;
 public class LinuxLogFragment extends Fragment implements View.OnClickListener {
     // TODO: Rename parameter arguments, choose names that match
     // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
-    private static final String ARG_PARAM1 = "param1";
-    private static final String ARG_PARAM2 = "param2";
-    private static final int MIN_DELAY = 2000;
+    public static final String DEVICE_ID = "device_id";
+    private static final int MIN_DELAY = 10000;
 
     // TODO: Rename and change types of parameters
-    private String mParam1;
-    private String mParam2;
+    private String device_id;
 
     ToggleButton toggleButtonLin;
     AlarmManager alarm;
@@ -75,6 +73,7 @@ public class LinuxLogFragment extends Fragment implements View.OnClickListener {
         super.onCreate(savedInstanceState);
         if (getArguments() != null) {
             netDevRunning = getArguments().getInt("run",0);
+            device_id = getArguments().getString(DEVICE_ID,"noname");
         }
     }
 
@@ -147,6 +146,7 @@ public class LinuxLogFragment extends Fragment implements View.OnClickListener {
             alarm = (AlarmManager) getActivity().getSystemService(Context.ALARM_SERVICE);
 
             intent = new Intent(getActivity(), NetDevService.class);
+            intent.putExtra(DEVICE_ID,device_id);
             pintent = PendingIntent.getService(getActivity(), REQUEST_CODE, intent, 0);
 
             alarm.setRepeating(AlarmManager.RTC_WAKEUP, System.currentTimeMillis(), delay, pintent);
@@ -169,6 +169,7 @@ public class LinuxLogFragment extends Fragment implements View.OnClickListener {
 
             if (pintent==null) {
                 intent = new Intent(getActivity(), NetDevService.class);
+                intent.putExtra(DEVICE_ID,device_id);
                 pintent = PendingIntent.getService(getActivity(), REQUEST_CODE, intent, PendingIntent.FLAG_CANCEL_CURRENT);
             }
 

@@ -1,5 +1,6 @@
 package eu.mcomputing.syslogger.services;
 
+import android.annotation.TargetApi;
 import android.app.ActivityManager;
 import android.app.IntentService;
 import android.content.Intent;
@@ -8,6 +9,7 @@ import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.PermissionInfo;
 import android.content.pm.ServiceInfo;
+import android.os.Build;
 import android.os.Debug;
 import android.os.Environment;
 import android.text.format.Time;
@@ -43,6 +45,7 @@ public class AppInfoService extends IntentService {
     private final String applog_dir = "app";
     private final String applog_file = "installed_apps.csv";
     private final String perinfo_file = "per_info.csv";
+    private final String PER_REQ_FILE = "per_requested_info.csv";
     private final String activityinfo_file = "activity_info.csv";
     private final String serviceinfo_file = "service_info.csv";
     private final String rcvinfo_file = "receiver_info.csv";
@@ -118,12 +121,20 @@ public class AppInfoService extends IntentService {
        now.setToNow();
        StringBuilder lineBuff = new StringBuilder();
 
+       final PackageManager pm = getApplicationContext().getPackageManager();
+
        lineBuff.append(now.format2445() + ";");
        lineBuff.append(packageInfo.applicationInfo.uid);
+       lineBuff.append(";");
+       lineBuff.append(pm.getApplicationLabel(packageInfo.applicationInfo));
        lineBuff.append(";");
        lineBuff.append(packageInfo.packageName);
        lineBuff.append(";");
        lineBuff.append(packageInfo.applicationInfo.className);
+       lineBuff.append(";");
+       lineBuff.append(packageInfo.applicationInfo.name);
+       lineBuff.append(";");
+       lineBuff.append(packageInfo.sharedUserId);
        lineBuff.append(";");
        lineBuff.append(packageInfo.applicationInfo.permission);
        lineBuff.append(";");
@@ -143,6 +154,9 @@ public class AppInfoService extends IntentService {
                 appLB.append(ai.applicationInfo.uid);
                 appLB.append(";");
                 appLB.append(ai.name);
+                appLB.append(";");
+                appLB.append(ai.processName);
+                        //ai.getIconResource()
                 appLB.append("\n");
             }
         }
@@ -182,6 +196,42 @@ public class AppInfoService extends IntentService {
                 perLB.append("\n");
             }
         }
+
+        /*String[] per = packageInfo.requestedPermissions;
+
+
+        int currentapiVersion = android.os.Build.VERSION.SDK_INT;
+        if (currentapiVersion >= Build.VERSION_CODES.JELLY_BEAN){
+            int[] perflag = packageInfo.requestedPermissionsFlags;
+        }*/
+
+        return perLB.toString();
+    }
+    private String parse_req_permission(PackageInfo packageInfo){
+        StringBuilder perLB = new StringBuilder();
+        Time now = new Time("UTC");
+        now.setToNow();
+
+        String[] per = packageInfo.requestedPermissions;
+        int[] perflag = null;
+        int currentapiVersion = android.os.Build.VERSION.SDK_INT;
+        if (currentapiVersion >= Build.VERSION_CODES.JELLY_BEAN){
+            perflag = packageInfo.requestedPermissionsFlags;
+        }
+
+        if (per!=null) {
+            for (int i=0;i<per.length;i++) {
+                perLB.append(now.format2445() + ";");
+                perLB.append(packageInfo.applicationInfo.uid);
+                perLB.append(";");
+                perLB.append(per[i]);
+                if(perflag!=null){
+                    perLB.append(";");
+                    perLB.append(perflag[i]);
+                }else{perLB.append(";null");}
+                perLB.append("\n");
+            }
+        }
         return perLB.toString();
     }
     private String parse_receivers(PackageInfo packageInfo){
@@ -210,29 +260,39 @@ public class AppInfoService extends IntentService {
         StringBuilder recLB = new StringBuilder();
         StringBuilder appLB = new StringBuilder();
         StringBuilder serLB = new StringBuilder();
+        StringBuilder perreqLB = new StringBuilder();
 
         PackageManager pm = getPackageManager();
 
         if (uid==-1) {
-            lineBuff.append("TimeUTC;UID;Name;ClasName;Permission;lastUpdateTime\n");
+            lineBuff.append("TimeUTC;UID;ApplicationLabel;PackadgeName;ClasName;Name;sharedUserId;Permission;lastUpdateTime\n");
             perLB.append("TimeUTC;UID;packadgeName;name;group\n");
             recLB.append("TimeUTC;UID;packadgeName;name;permission;TargetActivity;taskAffinity;processName\n");
-            appLB.append("TimeUTC;UID;name\n");
+            appLB.append("TimeUTC;UID;name;processName\n");
             serLB.append("TimeUTC;UID;name\n");
-
-            List<PackageInfo> packages = pm.getInstalledPackages(PackageManager.GET_ACTIVITIES);
-            List<PackageInfo> packagesSR = pm.getInstalledPackages(PackageManager.GET_RECEIVERS + PackageManager.GET_SERVICES + PackageManager.GET_META_DATA + PackageManager.GET_PERMISSIONS);
+            perreqLB.append("TimeUTC;UID;permission;req_flag\n");
 
             //GET_UNINSTALLED_PACKAGES
+            List<PackageInfo> packages = pm.getInstalledPackages(PackageManager.GET_META_DATA);
             for (PackageInfo packageInfo : packages) {
                 lineBuff.append(parse_packadgeInfo(packageInfo));
+            }
+            packages = pm.getInstalledPackages(PackageManager.GET_ACTIVITIES);
+            for (PackageInfo packageInfo : packages) {
                 appLB.append(parse_activity(packageInfo));
             }
-
-            for (PackageInfo packageInfo : packagesSR) {
+            packages = pm.getInstalledPackages(PackageManager.GET_SERVICES);
+            for (PackageInfo packageInfo : packages) {
                 serLB.append(parse_service(packageInfo));
-                perLB.append(parse_permission(packageInfo));
+            }
+            List<PackageInfo> packagesSR = pm.getInstalledPackages(PackageManager.GET_RECEIVERS);
+            List<PackageInfo> packagesPER = pm.getInstalledPackages(PackageManager.GET_PERMISSIONS);
+            for (PackageInfo packageInfo : packagesSR) {
                 recLB.append(parse_receivers(packageInfo));
+            }
+            for (PackageInfo packageInfo : packagesPER) {
+                perLB.append(parse_permission(packageInfo));
+                perreqLB.append(parse_req_permission(packageInfo));
             }
         }else{
             //uid!=-1 we are doing update
@@ -254,12 +314,14 @@ public class AppInfoService extends IntentService {
                 serLB.append(parse_service(packageInfo));
                 perLB.append(parse_permission(packageInfo));
                 recLB.append(parse_receivers(packageInfo));
+                perreqLB.append(parse_req_permission(packageInfo));
             } catch (PackageManager.NameNotFoundException e) {
                 e.printStackTrace();
             }
         }
 
         appendToFile(perLB.toString(), directory.getAbsolutePath() + "/" + perinfo_file);
+        appendToFile(perreqLB.toString(), directory.getAbsolutePath() + "/" + PER_REQ_FILE);
         appendToFile(lineBuff.toString(), directory.getAbsolutePath() + "/" + applog_file);
         appendToFile(recLB.toString(), directory.getAbsolutePath() + "/" + rcvinfo_file);
         appendToFile(appLB.toString(), directory.getAbsolutePath() + "/" + activityinfo_file);
@@ -339,12 +401,12 @@ public class AppInfoService extends IntentService {
                     appendToFile(sb.toString(), file2.getAbsolutePath() + "/" + RUNAPP_FILE);
                 }
 
-                int[] poleintov = new int[pids.size()];
+                int[] polepid = new int[pids.size()];
                 int i = 0;
                 for (int n : pids) {
-                    poleintov[i++] = n;
+                    polepid[i++] = n;
                 }
-                Debug.MemoryInfo mei[] = manager.getProcessMemoryInfo(poleintov);
+                Debug.MemoryInfo mei[] = manager.getProcessMemoryInfo(polepid);
 
                 i = 0;
                 for (ActivityManager.RunningAppProcessInfo pi : runningProcesses) {
@@ -355,7 +417,7 @@ public class AppInfoService extends IntentService {
                     if (!procesfile.exists()) {
                         uidLine.append("Time;Name;Pid;State;ppid;uTime;sTime;cutime;cstime;starttime;virtualmem;rss;" +
                                 "MemoryInfo-dalvikPrivateDirty;dalvikPss;dalvikSharedDirty;" +
-                                "nativePrivateDirty;nativePss;nativeSharedDirty;otherPrivateDirty;otherPss;otherSharedDirty" +
+                                "nativePrivateDirty;nativePss;nativeSharedDirty;otherPrivateDirty;otherPss;otherSharedDirty;" +
                                 "TotalPrivateDirty;TotalSharedDirty\n");
                     }
 
@@ -363,17 +425,17 @@ public class AppInfoService extends IntentService {
 
                     RandomAccessFile rifle = null;
                     try {
-                        rifle = new RandomAccessFile("/proc/" + poleintov[i] + "/stat", "r");
+                        rifle = new RandomAccessFile("/proc/" + polepid[i] + "/stat", "r");
                         String line = rifle.readLine();
                         rifle.close();
                         String[] stat = line.split("\\s");
 
-                        if(Integer.decode(stat[0])!=poleintov[i]){
-                            Log.e(TAG,"Something is wrong: "+stat[0]+" != "+poleintov[i]);
+                        if(Integer.decode(stat[0])!=polepid[i]){
+                            Log.e(TAG,"Something is wrong: "+stat[0]+" != "+polepid[i]);
                         }
 
-                        uidLine.append(stat[0] + ";");//pid
                         uidLine.append(stat[1] + ";");//name
+                        uidLine.append(stat[0] + ";");//pid
                         uidLine.append(stat[2] + ";");//state R  Running, S  Sleeping, D  Waiting disk sleep, Z  Zombie, T  Stopped
                         uidLine.append(stat[3] + ";");//parent pid
                         uidLine.append(stat[14] + ";");//utime

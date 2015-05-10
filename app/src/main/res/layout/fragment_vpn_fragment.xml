@@ -1,0 +1,21 @@
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context="eu.mcomputing.syslogger.screen.VPN_fragment">
+
+    <ToggleButton
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="button VPN"
+        android:id="@+id/button_enableVPN"
+        android:layout_gravity="center" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textSize="@dimen/abc_text_size_medium_material"
+        android:text="@string/hello_blank_fragment"
+        android:layout_gravity="center_horizontal|top"/>
+
+</FrameLayout>

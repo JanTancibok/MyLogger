@@ -3,44 +3,57 @@ package eu.mcomputing.syslogger;
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
+import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.support.v4.app.FragmentActivity;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentTransaction;
+import android.telephony.TelephonyManager;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.ArrayAdapter;
 import android.support.v4.app.Fragment;
 
+import java.io.File;
 import java.util.List;
 import android.os.Handler;
+import android.widget.ToggleButton;
 
 import eu.mcomputing.syslogger.screen.LinuxLogFragment;
 import eu.mcomputing.syslogger.screen.LogCatFragment;
 import eu.mcomputing.syslogger.screen.MenuFragment;
+import eu.mcomputing.syslogger.screen.VPN_fragment;
 import eu.mcomputing.syslogger.services.LoggerService;
+import eu.mcomputing.syslogger.services.VPN_logger_service;
+import eu.mcomputing.syslogger.utils.NmapBinaryInstaller;
 
 
-public class MyMainActivity extends FragmentActivity implements LogCatFragment.OnFragmentInteractionListener, LinuxLogFragment.OnFragmentInteractionListener {
+public class MyMainActivity extends FragmentActivity implements LogCatFragment.OnFragmentInteractionListener, LinuxLogFragment.OnFragmentInteractionListener, VPN_fragment.OnFragmentInteractionListener {
     private LoggerService s;
     private ArrayAdapter<String> adapter;
     private List<String> wordList;
 
     boolean mIsBound = false;
     private NotificationManager mNM;
+    private String deviceID;
 
     public int getNetDevRunning() {
         return netDevRunning;
     }
+    public static File getbinPath() {
+        return binPath;
+    }
 
+    private static File binPath = null;
     private int netDevRunning = 0;
     private int NOTIFICATION = R.string.virdir_service_started;
     public static Handler mUiHandler = null;
-
 
     @Override
     protected void onDestroy() {
@@ -72,8 +85,27 @@ public class MyMainActivity extends FragmentActivity implements LogCatFragment.O
             //netDevRunning = savedInstanceState.getInt("run", 0);
         }
 
-        setContentView(R.layout.activity_my_main);
+        boolean first = true;
+        //first Create Install
+        SharedPreferences preferences = getPreferences(MODE_PRIVATE);
+        first = preferences.getBoolean("first",true);
+        if(first){
+            NmapBinaryInstaller installer = new NmapBinaryInstaller(getApplicationContext());
+            installer.installResources();
+            Log.i("aktivita", "installer started");
+            preferences.edit().putBoolean("first", false).commit();
 
+            //create device ID
+            TelephonyManager tm = (TelephonyManager) getBaseContext().getSystemService(Context.TELEPHONY_SERVICE);
+            deviceID = this.getDeviceName()+" "+ tm.getDeviceId();
+            preferences.edit().putString("deviceID", deviceID).commit();
+        }else{
+            Log.i("aktivita", "installed");
+            deviceID = preferences.getString("deviceID","noname_pref");
+        }
+        binPath = getDir("bin", Context.MODE_MULTI_PROCESS);
+
+        setContentView(R.layout.activity_my_main);
         MenuFragment menuf = MenuFragment.newInstance();
 
         menuf.setArguments(savedInstanceState);
@@ -98,7 +130,7 @@ public class MyMainActivity extends FragmentActivity implements LogCatFragment.O
         super.onPause();
         SharedPreferences preferences = getPreferences(MODE_PRIVATE);
         SharedPreferences.Editor editor = preferences.edit();
-        editor.putInt("run",netDevRunning);                                     //??test
+        editor.putInt("run", netDevRunning);                                     //??test
         editor.apply();
     }
 
@@ -164,5 +196,28 @@ public class MyMainActivity extends FragmentActivity implements LogCatFragment.O
     public void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
         outState.putInt("run", netDevRunning);
+    }
+
+    @Override
+    public void onFragmentInteraction(View view) {
+        if(((ToggleButton) view).isChecked()) {
+            startService(new Intent(getBaseContext(), VPN_logger_service.class));
+        }else{
+            stopService(new Intent(getBaseContext(), VPN_logger_service.class));
+        }
+    }
+
+    public String getDeviceID() {
+        return deviceID;
+    }
+
+    public String getDeviceName() {
+        String manufacturer = Build.MANUFACTURER;
+        String model = Build.MODEL;
+        if (model.startsWith(manufacturer)) {
+            return model;
+        } else {
+            return manufacturer+" "+model;
+        }
     }
 }
