@@ -145,8 +145,15 @@ public class MyDBAdapter {
             open();
         }
         System.out.println("Inside Drop Table.");
-        db.execSQL("drop table" + tableName // table name
-        );
+
+        Cursor cursor = db.rawQuery("select DISTINCT tbl_name from sqlite_master where tbl_name = '"+tableName+"'", null);
+        if(cursor!=null) {
+           if(cursor.getCount()>0) {
+              cursor.close();
+              db.execSQL("drop table " + tableName );
+           }
+           cursor.close();
+        }
         close();
     }
 

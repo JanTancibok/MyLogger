@@ -43,19 +43,48 @@
                 android:layout_alignParentTop="true"
                 android:layout_toRightOf="@+id/btnStartService" />
 
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/adb_log_info"
+                android:id="@+id/textView2"
+                android:layout_alignBottom="@+id/btnStopService"
+                android:layout_alignParentRight="true"
+                android:layout_alignParentEnd="true"
+                android:layout_alignParentTop="true"
+                android:layout_toRightOf="@+id/btnStopService"
+                android:layout_toEndOf="@+id/btnStopService" />
+
         </RelativeLayout>
 
 
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
         <EditText
-            android:layout_width="fill_parent"
+                android:layout_width="150dp"
+                android:layout_height="wrap_content"
+                android:id="@+id/editText" />
+
+        <TextView
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:id="@+id/editText" />
-        <!--android:layout_below="@+id/btnStartService"
+            android:textAppearance="?android:attr/textAppearanceMedium"
+            android:text="  Filter (V,D,I,W,E)"
+            android:id="@+id/textView3"
+            android:layout_alignBottom="@+id/editText"
+            android:layout_toRightOf="@+id/editText"
+            android:layout_toEndOf="@+id/editText" />
+
+    </RelativeLayout>
+
+    <!--android:layout_below="@+id/btnStartService"
         android:layout_alignParentLeft="true"
         android:layout_alignParentStart="true"
         android:layout_marginLeft="10dp"-->
 
-        <ListView
+    <ListView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:id="@id/android:list" />
@@ -68,4 +97,4 @@
             android:ems="10"
             android:id="@+id/textView" />
 
-    </LinearLayout>
+</LinearLayout>

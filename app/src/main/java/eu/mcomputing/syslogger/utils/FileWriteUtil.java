@@ -12,6 +12,7 @@ import org.apache.http.entity.ContentType;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.entity.mime.HttpMultipartMode;
 import org.apache.http.entity.mime.MultipartEntityBuilder;
+import org.apache.http.entity.mime.content.StringBody;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.protocol.HTTP;
 import org.apache.http.util.EntityUtils;
@@ -37,15 +38,15 @@ public final class FileWriteUtil {
     public static final Map<Integer,String> states;
     static{
        HashMap cm = new HashMap<String,String>();
-        cm.put('1', "TCP_ESTABLISHED");
-        cm.put('2', "TCP_SYN_SENT");
-        cm.put('3', "TCP_SYN_RECV");
-        cm.put('4', "TCP_FIN_WAIT1");
-        cm.put('5', "TCP_FIN_WAIT2");
-        cm.put('6', "TCP_TIME_WAIT");
-        cm.put('7', "TCP_CLOSE");
-        cm.put('8', "TCP_CLOSE_WAIT");
-        cm.put('9', "TCP_LAST_ACK");
+        cm.put("01", "TCP_ESTABLISHED");
+        cm.put("02", "TCP_SYN_SENT");
+        cm.put("03", "TCP_SYN_RECV");
+        cm.put("04", "TCP_FIN_WAIT1");
+        cm.put("05", "TCP_FIN_WAIT2");
+        cm.put("06", "TCP_TIME_WAIT");
+        cm.put("07", "TCP_CLOSE");
+        cm.put("08", "TCP_CLOSE_WAIT");
+        cm.put("09", "TCP_LAST_ACK");
         cm.put("0A", "TCP_LISTEN");
         cm.put("0B", "TCP_CLOSING");    // Now a valid state
         cm.put("0C", "TCP_MAX_STATES");  // Leave at the end!
@@ -105,7 +106,7 @@ public final class FileWriteUtil {
         return result;
     }
 
-    public static String httpZIP(File zipfile) {
+    public static String httpZIP(File zipfile,String devid) {
         HttpResponse response = null;
         String result = "";
         try {
@@ -122,6 +123,8 @@ public final class FileWriteUtil {
             {
                 entityBuilder.addBinaryBody("zipfile", inputStream, ContentType.create("application/zip"), "name");
             }
+            StringBody stringBody2 = new StringBody(devid, ContentType.MULTIPART_FORM_DATA);
+            entityBuilder.addPart("devid",stringBody2);
 
             HttpEntity entity = entityBuilder.build();
             httpPost.setEntity(entity);

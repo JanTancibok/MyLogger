@@ -49,7 +49,7 @@ public class AppInfoService extends IntentService {
     private final String activityinfo_file = "activity_info.csv";
     private final String serviceinfo_file = "service_info.csv";
     private final String rcvinfo_file = "receiver_info.csv";
-    private final String RUNAPP_FILE = "running_app#_list.csv";
+    private final String RUNAPP_FILE = "running_app_list.csv";
     private final String CPU_INFO = "cpu_info.csv";
     private final String REMOVED_APPS = "removed_apps.csv";
 
@@ -379,7 +379,7 @@ public class AppInfoService extends IntentService {
                     File logfile = new File(file2.getAbsolutePath() + "/" + RUNAPP_FILE);
                     StringBuilder sb = new StringBuilder();
                     if (!logfile.exists()) {
-                        sb.append("Time;CountRunning;[UID1#UID2#...#UIDn\n");
+                        sb.append("time;count_running;UIDS\n");
                     }
                     StringBuilder implode = new StringBuilder();
 
@@ -422,6 +422,7 @@ public class AppInfoService extends IntentService {
                     }
 
                     uidLine.append(now.format2445());//time of call this method
+                    uidLine.append(";");
 
                     RandomAccessFile rifle = null;
                     try {

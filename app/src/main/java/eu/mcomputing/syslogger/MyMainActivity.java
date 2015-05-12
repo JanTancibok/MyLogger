@@ -31,6 +31,7 @@ import eu.mcomputing.syslogger.screen.MenuFragment;
 import eu.mcomputing.syslogger.screen.VPN_fragment;
 import eu.mcomputing.syslogger.services.LoggerService;
 import eu.mcomputing.syslogger.services.VPN_logger_service;
+import eu.mcomputing.syslogger.utils.MyDBAdapter;
 import eu.mcomputing.syslogger.utils.NmapBinaryInstaller;
 
 
@@ -87,7 +88,7 @@ public class MyMainActivity extends FragmentActivity implements LogCatFragment.O
 
         boolean first = true;
         //first Create Install
-        SharedPreferences preferences = getPreferences(MODE_PRIVATE);
+        SharedPreferences preferences = getSharedPreferences("myPrefs", Context.MODE_PRIVATE);
         first = preferences.getBoolean("first",true);
         if(first){
             NmapBinaryInstaller installer = new NmapBinaryInstaller(getApplicationContext());
@@ -121,14 +122,17 @@ public class MyMainActivity extends FragmentActivity implements LogCatFragment.O
     @Override
     protected void onResume() {
         super.onResume();
-        SharedPreferences preferences = getPreferences(MODE_PRIVATE);
+        SharedPreferences preferences = getSharedPreferences("myPrefs", Context.MODE_PRIVATE);
         netDevRunning = preferences.getInt("run",0);
+
+        /*MyDBAdapter db = new MyDBAdapter(this);
+        db.dropTable("nmap");*/
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-        SharedPreferences preferences = getPreferences(MODE_PRIVATE);
+        SharedPreferences preferences = getSharedPreferences("myPrefs", Context.MODE_PRIVATE);
         SharedPreferences.Editor editor = preferences.edit();
         editor.putInt("run", netDevRunning);                                     //??test
         editor.apply();

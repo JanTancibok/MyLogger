@@ -22,5 +22,6 @@
     <string name="stop_all">Stop all</string>
     <string name="VPN_log">VPN PACKET LOG</string>
     <string name="disconnected">Disconnected vpn</string>
+    <string name="adb_log_info">Nothing from this will be persisted. You need root to see other app logs.</string>
 
 </resources>
