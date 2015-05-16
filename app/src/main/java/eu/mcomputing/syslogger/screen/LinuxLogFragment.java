@@ -5,6 +5,7 @@ import android.app.AlarmManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
@@ -44,6 +45,8 @@ public class LinuxLogFragment extends Fragment implements View.OnClickListener {
     PendingIntent pintent;
     Intent apintent;
     PendingIntent appintent;
+    Intent runintent;
+    PendingIntent runpintent;
     private static final String TAG_NETDEVSERVICE = "NetDev_Service";
     private int NOTIFICATION = R.string.virdir_service_started;
     private int netDevRunning = 0;                                              //NEED PERSIST
@@ -151,11 +154,24 @@ public class LinuxLogFragment extends Fragment implements View.OnClickListener {
 
             alarm.setRepeating(AlarmManager.RTC_WAKEUP, System.currentTimeMillis(), delay, pintent);
 
-            apintent = new Intent(getActivity(), AppInfoService.class);
-            apintent.setAction(AppInfoService.ACTION_GETAPP);
-            appintent = PendingIntent.getService(getActivity(), 1234, apintent, 0);
+            //run just once
+            SharedPreferences preferences = getActivity().getSharedPreferences("myPrefs", Context.MODE_PRIVATE);
+            boolean first = preferences.getBoolean("run_app_info",true);
+            if(first){
+                apintent = new Intent(getActivity(), AppInfoService.class);
+                apintent.setAction(AppInfoService.ACTION_GETAPP);
+                appintent = PendingIntent.getService(getActivity(), 1234, apintent, 0);
 
-            alarm.setRepeating(AlarmManager.RTC_WAKEUP, System.currentTimeMillis(), delay, appintent);
+                alarm.setRepeating(AlarmManager.RTC_WAKEUP, System.currentTimeMillis(), delay, appintent);
+                preferences.edit().putBoolean("run_app_info", false).apply();
+            }
+
+            //run every time
+            runintent = new Intent(getActivity(), AppInfoService.class);
+            runintent.setAction(AppInfoService.ACTION_RUNAPP);
+            runpintent = PendingIntent.getService(getActivity(), 1818, runintent, 0);
+
+            alarm.setRepeating(AlarmManager.RTC_WAKEUP, System.currentTimeMillis(), delay, runpintent);
 
             //mNM = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
             // Display a notification about us starting.  We put an icon in the status bar.
@@ -180,6 +196,14 @@ public class LinuxLogFragment extends Fragment implements View.OnClickListener {
             appintent = PendingIntent.getService(getActivity(), 1234, apintent, PendingIntent.FLAG_CANCEL_CURRENT);
 
             alarm.cancel(appintent);
+
+            if (runpintent==null) {
+                runintent = new Intent(getActivity(), AppInfoService.class);
+                runintent.setAction(AppInfoService.ACTION_RUNAPP);
+                runpintent = PendingIntent.getService(getActivity(), 1818, runintent, PendingIntent.FLAG_CANCEL_CURRENT);
+            }
+            alarm.cancel(runpintent);
+
             ((MyMainActivity) getActivity()).cancelNotification();
             netDevRunning = 0;
         }

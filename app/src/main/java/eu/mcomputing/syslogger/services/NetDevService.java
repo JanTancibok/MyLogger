@@ -210,6 +210,8 @@ public class NetDevService extends IntentService {
         final android.net.NetworkInfo mobile = connMgr
                 .getNetworkInfo(ConnectivityManager.TYPE_MOBILE);
 
+        //4G ConnectivityManager.TYPE_WIMAX
+
         if (wifi.isConnected()) {
             TYPE = "wifi";
         } else {
@@ -257,7 +259,8 @@ public class NetDevService extends IntentService {
                 String rema[] = fields[2].split(":");
 
                 //if(mypath.equals("UDP") || mypath.equals("TCP")){
-                loca[0] = IpAdressHex2Dec.hexa2decIP(loca[0]);
+                loca[0] = IpAdressHex2Dec.hexa2decIP(loca[0]);     //check length inside ipv6 vs ipv4
+                String hexaIP = rema[0];
                 rema[0] = IpAdressHex2Dec.hexa2decIP(rema[0]);
                 //}
 
@@ -303,7 +306,7 @@ public class NetDevService extends IntentService {
                 stb.append(fields[4]);*/
                 stb.append("\n");
                 //Log.e(TAG, "new linezzzzzzzzzzzzzzzzzzzzzzzz");
-                new AsyncCommandExecutor().execute(mypath, stb.toString(), rema[0]);
+                new AsyncCommandExecutor().execute(mypath, stb.toString(), rema[0], hexaIP);
             }
         } catch (Exception e) {
             Log.e(TAG, "Exception", e);
@@ -365,6 +368,8 @@ public class NetDevService extends IntentService {
                 MyDBAdapter mdb = new MyDBAdapter(getApplicationContext());
                 List<String> l;
                 String ip = strings[2];
+                String hexaIP = strings[3];
+                String i6dns = "2001:4860:4860::8888";
 
                 // Get the directory for the app's private pictures directory.
                 File pathToSd = Environment.getExternalStorageDirectory();
@@ -381,17 +386,19 @@ public class NetDevService extends IntentService {
 
                     appendToFile(mybuffer, logfile.getAbsolutePath());
 ////////////////////////////////////////////////////////////////////////////////
+                    String ipv6 = ip;
+                    String dns = "8.8.8.8";
                     if (mypath.equals("UDP6") || mypath.equals("TCP6")) {
-                        //ipv6 = "-6 ";
-                        ip = ip.substring(0, nthOccurrence(ip, '.', 4) - 2);
+                      //hexaIP = IpAdressHex2Dec.toRegularHexa(hexaIP);
+                        ipv6 = "-6 "+IpAdressHex2Dec.toRegularHexa(hexaIP);//ip.substring(0, nthOccurrence(ip, '.', 4) - 2);
+                        dns = i6dns;
                     }
 
                     //-p"+port+" "
                     l = mdb.getDNas(ip);
-                    if (l != null && l.size() > 0) {
-                    } else {
-                        try {
-                            output = CommandRunner.execCommand(NMAP_COMMAND + "-T5 --top-ports 300 --version-light -R --dns-servers 8.8.8.8 " + ip, MyMainActivity.getbinPath().getAbsoluteFile());
+                    if (l == null || l.size() < 3) {
+                       try {
+                            output = CommandRunner.execCommand(NMAP_COMMAND + "-T5 --top-ports 300 --version-light -R --dns-servers "+dns+" "+ ipv6, MyMainActivity.getbinPath().getAbsoluteFile());
 
                             if (output != null) {
                                 l = new ArrayList<String>();
@@ -414,7 +421,7 @@ public class NetDevService extends IntentService {
                                     }
                                     a = output.indexOf("SERVICE") + 8;
                                     b = output.indexOf("\n\n");
-                                    if(a<output.length() && a<b) {
+                                    if(a<output.length() && a<b && a>8) {
                                         l.add(output.substring(a, b));
                                     }else{
                                         l.add("no open ports");
@@ -430,27 +437,38 @@ public class NetDevService extends IntentService {
                             output = "Nmap Scan Interrupted!";
                             Log.d(TAG, e.getMessage());
                         }
+                    }else{
+                        //existujem v databaze
+                        return null;
                     }
-                    File lognmap_file = new File(file.getAbsolutePath() + "/" + NMAP_PATH);
-                    StringBuilder st = new StringBuilder();
+                    //ak je co
+                    if (l != null && l.size() > 2) {
+                        File lognmap_file = new File(file.getAbsolutePath() + "/" + NMAP_PATH);
+                        StringBuilder st = new StringBuilder();
 
-                    if (!lognmap_file.exists()) {
-                        st.append("IP;NAME;PORT;STATUS;SERVICE\n");
-                    }
-                    try {
-                        String[] lines = l.get(2).split("\n");
-                        for (int i = 0; i < lines.length; i++) {
-                            st.append(l.get(0));st.append(";");
-                            st.append(l.get(1)); st.append(";");
-                            String[] vals = lines[i].split("\\s+");
-                            st.append(vals[0]);st.append(";");
-                            st.append(vals[1]);st.append(";");
-                            st.append(vals[2]);st.append("\n");
+                        if (!lognmap_file.exists()) {
+                            st.append("IP;NAME;PORT;STATUS;SERVICE\n");
                         }
-                        appendToFile(st.toString(), lognmap_file.getAbsolutePath());
-                    }catch(Exception e){
-                        Log.e(TAG,e.getMessage());
-                       // Log.e(TAG,);
+                        try {
+                            String[] lines = l.get(2).split("\n");
+                            for (int i = 0; i < lines.length; i++) {
+                                st.append(l.get(0));
+                                st.append(";");
+                                st.append(l.get(1));
+                                st.append(";");
+                                String[] vals = lines[i].split("\\s+");
+                                st.append(vals[0]);
+                                st.append(";");
+                                st.append(vals[1]);
+                                st.append(";");
+                                st.append(vals[2]);
+                                st.append("\n");
+                            }
+                            appendToFile(st.toString(), lognmap_file.getAbsolutePath());
+                        } catch (Exception e) {
+                            Log.e(TAG, e.getMessage());
+                            // Log.e(TAG,);
+                        }
                     }
                 }
             } else {

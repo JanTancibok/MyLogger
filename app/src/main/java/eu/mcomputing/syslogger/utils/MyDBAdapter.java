@@ -57,8 +57,8 @@ public class MyDBAdapter {
         public void onCreate(SQLiteDatabase _db) {
             _db.execSQL("CREATE TABLE nmap("
                     + "ip TEXT PRIMARY KEY,"
-                    + "ports TEXT,"
-                    + "name TEXT" + ")");
+                    + "name TEXT,"
+                    + "ports TEXT" + ")");
         }
 
         @Override
@@ -75,8 +75,8 @@ public class MyDBAdapter {
         ContentValues initialValues = new ContentValues();
         // as column'a' is INTEGER PRIMARY KEY, it get increament by SQLite
         initialValues.put("ip", str[0]);
-        initialValues.put("ports", str[1]);
-        initialValues.put("name", str[2]);
+        initialValues.put("name", str[1]);
+        initialValues.put("ports", str[2]);
         db.insert("nmap", // table name
                 null, initialValues // column name-value pairs
         );
@@ -103,7 +103,9 @@ public class MyDBAdapter {
             // mCursor.moveToFirst();
             if (mCursor.moveToFirst()) {
                 do {
+                    list.add(mCursor.getString(0));
                     list.add(mCursor.getString(1));
+                    list.add(mCursor.getString(2));
                 } while (mCursor.moveToNext());
             }
         }

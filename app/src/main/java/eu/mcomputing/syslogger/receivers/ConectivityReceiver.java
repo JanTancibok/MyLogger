@@ -133,7 +133,9 @@ public class ConectivityReceiver extends BroadcastReceiver {
 
                         if (zip.exists()) {
                             String result = FileWriteUtil.httpZIP(zip,preferences.getString("deviceID", "not_set"));
-                            if(result!=null){zip.delete();}
+                            if(result!=null && result.startsWith("OK")){
+                                zip.delete();
+                            }
                         }
                     } else {
                         File zipOne = new File(pathToSd, PATH_TODIR +"/"+ ZIP_NAME);

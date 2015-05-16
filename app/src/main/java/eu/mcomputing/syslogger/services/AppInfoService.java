@@ -52,6 +52,7 @@ public class AppInfoService extends IntentService {
     private final String RUNAPP_FILE = "running_app_list.csv";
     private final String CPU_INFO = "cpu_info.csv";
     private final String REMOVED_APPS = "removed_apps.csv";
+    private final String RUNNING_APPS_INFO = "run_app_info.csv";
 
     public AppInfoService() {
         super("AppInfoService");
@@ -62,7 +63,7 @@ public class AppInfoService extends IntentService {
         if (intent != null) {
             final String action = intent.getAction();
             if (ACTION_GETAPP.equals(action)) {
-                startAppLog();
+                startAppLog(-1);
             }
             if (ACTION_RUNAPP.equals(action)) {
                 this.logactualRunningApps();
@@ -72,7 +73,7 @@ public class AppInfoService extends IntentService {
                 final boolean param2 = intent.getBooleanExtra(EXTRA_REPLACE, false);
                 File pathToSd = Environment.getExternalStorageDirectory();
                 if (isExternalStorageWritable()) {
-                    logAppInfo(new File(pathToSd,"LOGS/" + applog_dir), param1); //applog dir should be created already
+                    startAppLog(param1);//logAppInfo(new File(pathToSd,"LOGS/" + applog_dir), param1); //applog dir should be created already
                 }
             }
             if (ACTION_REMOVEAPP.equals(action)) {
@@ -87,27 +88,27 @@ public class AppInfoService extends IntentService {
      * Handle action in the provided background thread with the provided
      * parameters.
      */
-    private void startAppLog() {
+    private void startAppLog(int uid) {
         Log.d(TAG, "app log running");
 
         if (isExternalStorageWritable()) {
             // Get the directory for the app's private pictures directory.
             File pathToSd = Environment.getExternalStorageDirectory();
             File file = new File(pathToSd, "LOGS");
-            file.mkdirs();
+            if(!file.exists())file.mkdirs();
             File file2 = new File(file.getAbsolutePath(), applog_dir);
-            file2.mkdirs();
+            if(!file2.exists())file2.mkdirs();
             if (!file2.exists()) {
                 Log.e(TAG, "Directory not created");
             } else {
                 File logfile = new File(file2.getAbsolutePath() + "/" + applog_file);
                 if (!logfile.exists()) {
-                    logAppInfo(file2,-1);
+                    logAppInfo(file2,uid);
                     logCPU(file);
                 }
                 //else instaled apps are atualised by broadcast receiveer
 
-                logactualRunningApps();
+                //logactualRunningApps();
             }
         } else {
             Log.e(TAG, "Cant write to SDcard");
@@ -408,18 +409,16 @@ public class AppInfoService extends IntentService {
                 }
                 Debug.MemoryInfo mei[] = manager.getProcessMemoryInfo(polepid);
 
+                File procesfile = new File(file2.getAbsolutePath() + "/" + RUNNING_APPS_INFO);
+                StringBuilder uidLine = new StringBuilder();
+                if (!procesfile.exists()) {
+                    uidLine.append("Time;Name;UID;Pid;State;ppid;uTime;sTime;cutime;cstime;starttime;virtualmem;rss;" +
+                            "MemoryInfo-dalvikPrivateDirty;dalvikPss;dalvikSharedDirty;" +
+                            "nativePrivateDirty;nativePss;nativeSharedDirty;otherPrivateDirty;otherPss;otherSharedDirty;" +
+                            "TotalPrivateDirty;TotalSharedDirty\n");
+                }
                 i = 0;
                 for (ActivityManager.RunningAppProcessInfo pi : runningProcesses) {
-
-                    File procesfile = new File(file2.getAbsolutePath() + "/" + pi.uid + ".csv");
-                    StringBuilder uidLine = new StringBuilder();
-
-                    if (!procesfile.exists()) {
-                        uidLine.append("Time;Name;Pid;State;ppid;uTime;sTime;cutime;cstime;starttime;virtualmem;rss;" +
-                                "MemoryInfo-dalvikPrivateDirty;dalvikPss;dalvikSharedDirty;" +
-                                "nativePrivateDirty;nativePss;nativeSharedDirty;otherPrivateDirty;otherPss;otherSharedDirty;" +
-                                "TotalPrivateDirty;TotalSharedDirty\n");
-                    }
 
                     uidLine.append(now.format2445());//time of call this method
                     uidLine.append(";");
@@ -436,6 +435,7 @@ public class AppInfoService extends IntentService {
                         }
 
                         uidLine.append(stat[1] + ";");//name
+                        uidLine.append(pi.uid + ";");
                         uidLine.append(stat[0] + ";");//pid
                         uidLine.append(stat[2] + ";");//state R  Running, S  Sleeping, D  Waiting disk sleep, Z  Zombie, T  Stopped
                         uidLine.append(stat[3] + ";");//parent pid
