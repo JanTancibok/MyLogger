@@ -82,33 +82,36 @@ public class NetDevService extends IntentService {
             zero = st.nextToken();
             header = st.nextToken();
 
-            while ((linest = new StringTokenizer(st.nextToken())) != null) {
+
+                if(st.hasMoreTokens())while ((linest = new StringTokenizer(st.nextToken())) != null) {
                 //take just not zero lines
                 devName = linest.nextToken();
-                recvBytes = linest.nextToken();
-                recvPackets = linest.nextToken();
-                rcvErr = linest.nextToken();
-                rcvDrop = linest.nextToken();
+                if(linest.hasMoreTokens()) { ///last line is coruptetd
+                    recvBytes = linest.nextToken();
+                    recvPackets = linest.nextToken();
+                    rcvErr = linest.nextToken();
+                    rcvDrop = linest.nextToken();
 
-                // Skip 4 tokens
-                for (int i = 0; i < 4; i++)
-                    zero = linest.nextToken();
+                    // Skip 4 tokens
+                    for (int i = 0; i < 4; i++)
+                        zero = linest.nextToken();
 
-                sendBytes = linest.nextToken();
+                    sendBytes = linest.nextToken();
 
-                if (!(recvBytes.equals("0") && sendBytes.equals("0"))) {
+                    if (!(recvBytes.equals("0") && sendBytes.equals("0"))) {
 
-                    lineBuff.append(now.format2445() + ";" + devName + ";"); //devName
-                    lineBuff.append(recvBytes + ";");
-                    lineBuff.append(recvPackets + ";");
-                    lineBuff.append(rcvErr + ";");
-                    lineBuff.append(rcvDrop + ";");
-                    lineBuff.append(sendBytes + ";");
-                    //Read sendBytes, sendPackets, errs, drop
-                    for (int i = 0; i < 3; i++)
-                        lineBuff.append(linest.nextToken() + ";");
+                        lineBuff.append(now.format2445() + ";" + devName + ";"); //devName
+                        lineBuff.append(recvBytes + ";");
+                        lineBuff.append(recvPackets + ";");
+                        lineBuff.append(rcvErr + ";");
+                        lineBuff.append(rcvDrop + ";");
+                        lineBuff.append(sendBytes + ";");
+                        //Read sendBytes, sendPackets, errs, drop
+                        for (int i = 0; i < 3; i++)
+                            lineBuff.append(linest.nextToken() + ";");
 
-                    lineBuff.append("\n");
+                        lineBuff.append("\n");
+                    }
                 }
             }
             reader.close();
@@ -144,9 +147,9 @@ public class NetDevService extends IntentService {
         if (children != null) {
             for (int i = 0; i < children.length; i++) {
                 int uid = Integer.parseInt(children[i]);
-                if ((uid >= 0 && uid < 2000) || (uid >= 10000)) {
+                //if ((uid >= 0 && uid < 2000) || (uid >= 10000)) {
                     uids.add(uid);
-                }
+                //}
             }
         }
 
@@ -156,46 +159,89 @@ public class NetDevService extends IntentService {
         now.setToNow();
 
         //tcp_snd = new byte[4];
-
+        MyDBAdapter mdb = new MyDBAdapter(getApplicationContext());
+        List<Integer> l;
+        int aktx = 0;
+        int akrx = 0;
+        int help = 0;
+        int helpr = 0;
         for (int i : uids) {
             sbuff.append(TYPE + ";" + now.format2445() + ";" + i + ";");
             try {
+
+                l = null;
+                aktx = 0;
+                akrx = 0;
+                l = mdb.getNet(i);
+                if(l!=null && l.size()>2){
+                    aktx = l.get(1);
+                    akrx = l.get(2);
+                }
+
                 rifle = new RandomAccessFile("/proc/uid_stat/" + i + "/tcp_snd", "r");
                 //rifle.readFully(tcp_snd);
-                sbuff.append(rifle.readInt() + ";");
+                String line;
+                while ((line = rifle.readLine()) != null) {
+                    help = Integer.valueOf(line);
+                    if(aktx>help){//probably we are rebooted
+                        aktx = 0;
+                    }
+                    sbuff.append((help-aktx) / 1024);
+                    sbuff.append(";");
+                    aktx = Integer.valueOf(line);
+                }
                 rifle.close();
 
                 rifle = new RandomAccessFile("/proc/uid_stat/" + i + "/tcp_rcv", "r");
-                sbuff.append(rifle.readInt() + "\n");
-                rifle.close();
+                line = null;
+                while ((line = rifle.readLine()) != null) {
+                    helpr = Integer.valueOf(line);
+                    if(akrx>helpr){//probably we are rebooted
+                        akrx = 0;
+                    }
+                    sbuff.append((helpr-akrx)/1024);
+                    sbuff.append("\n");
+                    akrx = Integer.valueOf(line);
+                }
 
+                if(l!=null && l.size()>0){
+                    mdb.updateNet(i,aktx,akrx);
+                }else{
+                    mdb.insertNet(i,aktx,akrx);
+                }
+                rifle.close();
             } catch (FileNotFoundException e) {
                 e.printStackTrace();
             } catch (IOException e) {
                 e.printStackTrace();
             }
-        }
-
-        if (isExternalStorageWritable()) {
-            // Get the directory for the app's private pictures directory.
-            File pathToSd = Environment.getExternalStorageDirectory();
-            File file = new File(pathToSd, "LOGS");
-            file.mkdirs();
-            if (!file.exists()) {
-                Log.e(TAG, "Directory not created");
-            } else {
-                File logfile = new File(file.getAbsolutePath() + "/net_stat_app.csv");
-                if (!logfile.exists()) {
-                    //write headers one
-                    String headers = "TYPE;Time;UID;Rxbytes;Txbytes\n";
-                    appendToFile(headers, file.getAbsolutePath() + "/net_stat_app.csv");
-                }
-                appendToFile(sbuff.toString(), file.getAbsolutePath() + "/net_stat_app.csv");
+            catch (ClassCastException e) {
+                 e.printStackTrace();
             }
-        } else {
-            Log.e(TAG, "Cant write to SDcard");
         }
 
+        //ak je co a kam zapis
+        if(!(help==0 && helpr==0)) {
+            if (isExternalStorageWritable()) {
+                // Get the directory for the app's private pictures directory.
+                File pathToSd = Environment.getExternalStorageDirectory();
+                File file = new File(pathToSd, "LOGS");
+                file.mkdirs();
+                if (!file.exists()) {
+                    Log.e(TAG, "Directory not created");
+                } else {
+                    File logfile = new File(file.getAbsolutePath() + "/net_stat_app.csv");
+                    if (!logfile.exists()) {
+                        //write headers one
+                        String headers = "TYPE;Time;UID;Rxbytes;Txbytes\n";
+                        appendToFile(headers, file.getAbsolutePath() + "/net_stat_app.csv");
+                    }
+                    appendToFile(sbuff.toString(), file.getAbsolutePath() + "/net_stat_app.csv");
+                }
+            } else {
+                Log.e(TAG, "Cant write to SDcard");
+            }
+        }
     }
 
     @Override
@@ -210,13 +256,18 @@ public class NetDevService extends IntentService {
         final android.net.NetworkInfo mobile = connMgr
                 .getNetworkInfo(ConnectivityManager.TYPE_MOBILE);
 
-        //4G ConnectivityManager.TYPE_WIMAX
+        final android.net.NetworkInfo wimax = connMgr
+                .getNetworkInfo(ConnectivityManager.TYPE_WIMAX);
 
         if (wifi.isConnected()) {
             TYPE = "wifi";
         } else {
             if (mobile.isConnected()) {
                 TYPE = "mobil";
+            }else{
+                if (wimax!=null && wimax.isConnected()) {
+                    TYPE = "LTE";
+                }
             }
         }
 
@@ -244,10 +295,11 @@ public class NetDevService extends IntentService {
             Scanner scanner = new Scanner(tcpfile);
 
             //The first two lines of the file are headers
-            header = scanner.nextLine();
-            scanner.nextLine();
+            if(scanner.hasNext()) header = scanner.nextLine();
+            if(scanner.hasNext()) header = scanner.nextLine();
             String line;
-            while ((line = scanner.nextLine()) != null) {
+            while (scanner.hasNext()) {
+                line = scanner.nextLine();
                 while (line.startsWith(" ")) {
                     line = line.substring(1, line.length());
                 }

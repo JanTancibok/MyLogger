@@ -24,4 +24,12 @@
     <string name="disconnected">Disconnected vpn</string>
     <string name="adb_log_info">Nothing from this will be persisted. You need root to see other app logs.</string>
 
+
+    <string name="traffic_detail_title">Traffic Details</string>
+    <string name="uploaded">Uploaded</string>
+    <string name="downloaded">Downloaded</string>
+    <string name="app_system_detail">Open system details</string>
+    <string name="title_activity_app_detail">AppDetailAct</string>
+
+    <string name="hello_world">Hello world!</string>
 </resources>

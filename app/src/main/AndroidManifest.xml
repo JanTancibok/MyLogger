@@ -18,7 +18,7 @@
             android:label="@string/app_name" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
+                <action android:name="android.intent.action.UNINSTALL_PACKAGE" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
@@ -67,11 +67,17 @@
             android:name=".services.VPN_logger_service"
             android:enabled="true"
             android:exported="false"
-            android:permission="android.permission.BIND_VPN_SERVICE">
+            android:permission="android.permission.BIND_VPN_SERVICE" >
             <intent-filter>
-                <action android:name="android.net.VpnService"/>
+                <action android:name="android.net.VpnService" />
             </intent-filter>
         </service>
+
+        <activity
+            android:name=".AppDetailAct"
+            android:label="@string/title_activity_app_detail"
+            android:parentActivityName=".MyMainActivity" >
+        </activity>
     </application>
 
 </manifest>

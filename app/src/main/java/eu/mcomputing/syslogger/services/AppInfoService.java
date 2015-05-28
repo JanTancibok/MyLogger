@@ -3,12 +3,14 @@ package eu.mcomputing.syslogger.services;
 import android.annotation.TargetApi;
 import android.app.ActivityManager;
 import android.app.IntentService;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.PermissionInfo;
 import android.content.pm.ServiceInfo;
+import android.net.ConnectivityManager;
 import android.os.Build;
 import android.os.Debug;
 import android.os.Environment;
@@ -23,6 +25,8 @@ import java.io.InputStreamReader;
 import java.io.RandomAccessFile;
 import java.util.ArrayList;
 import java.util.List;
+
+import eu.mcomputing.syslogger.screen.LinuxLogFragment;
 
 import static eu.mcomputing.syslogger.utils.FileWriteUtil.*;
 
@@ -102,10 +106,10 @@ public class AppInfoService extends IntentService {
                 Log.e(TAG, "Directory not created");
             } else {
                 File logfile = new File(file2.getAbsolutePath() + "/" + applog_file);
-                if (!logfile.exists()) {
+                //if (!logfile.exists()) {
                     logAppInfo(file2,uid);
                     logCPU(file);
-                }
+                //}
                 //else instaled apps are atualised by broadcast receiveer
 
                 //logactualRunningApps();
@@ -265,14 +269,21 @@ public class AppInfoService extends IntentService {
 
         PackageManager pm = getPackageManager();
 
-        if (uid==-1) {
-            lineBuff.append("TimeUTC;UID;ApplicationLabel;PackadgeName;ClasName;Name;sharedUserId;Permission;lastUpdateTime\n");
-            perLB.append("TimeUTC;UID;packadgeName;name;group\n");
-            recLB.append("TimeUTC;UID;packadgeName;name;permission;TargetActivity;taskAffinity;processName\n");
-            appLB.append("TimeUTC;UID;name;processName\n");
-            serLB.append("TimeUTC;UID;name\n");
-            perreqLB.append("TimeUTC;UID;permission;req_flag\n");
+        File perF = new File(directory.getAbsolutePath() + "/" + perinfo_file);
+        File perreqF = new File(directory.getAbsolutePath() + "/" + PER_REQ_FILE);
+        File applogF = new File(directory.getAbsolutePath() + "/" + applog_file);
+        File rcvinfoF = new File(directory.getAbsolutePath() + "/" + rcvinfo_file);
+        File actF = new File(directory.getAbsolutePath() + "/" + activityinfo_file);
+        File serF = new File(directory.getAbsolutePath() + "/" + serviceinfo_file);
 
+        if(!applogF.exists())lineBuff.append("TimeUTC;UID;ApplicationLabel;PackadgeName;ClasName;Name;sharedUserId;Permission;lastUpdateTime\n");
+        if(!perF.exists())perLB.append("TimeUTC;UID;packadgeName;name;group\n");
+        if(!rcvinfoF.exists())recLB.append("TimeUTC;UID;packadgeName;name;permission;TargetActivity;taskAffinity;processName\n");
+        if(!actF.exists())appLB.append("TimeUTC;UID;name;processName\n");
+        if(!serF.exists())serLB.append("TimeUTC;UID;name\n");
+        if(!perreqF.exists())perreqLB.append("TimeUTC;UID;permission;req_flag\n");
+
+        if (uid==-1) {
             //GET_UNINSTALLED_PACKAGES
             List<PackageInfo> packages = pm.getInstalledPackages(PackageManager.GET_META_DATA);
             for (PackageInfo packageInfo : packages) {
@@ -359,122 +370,155 @@ public class AppInfoService extends IntentService {
     }
 
     private void logactualRunningApps() {
-        ActivityManager manager = (ActivityManager) getSystemService(ACTIVITY_SERVICE);
-        List<ActivityManager.RunningAppProcessInfo> runningProcesses = manager.getRunningAppProcesses();
+        final ConnectivityManager connMgr = (ConnectivityManager) getApplicationContext()
+                .getSystemService(Context.CONNECTIVITY_SERVICE);
+        final android.net.NetworkInfo wifi = connMgr
+                .getNetworkInfo(ConnectivityManager.TYPE_WIFI);
+        final android.net.NetworkInfo mobile = connMgr
+                .getNetworkInfo(ConnectivityManager.TYPE_MOBILE);
+        final android.net.NetworkInfo wimax = connMgr
+                .getNetworkInfo(ConnectivityManager.TYPE_WIMAX);
+        String TYPE = "";
+        if (wifi.isConnected()) {
+            TYPE = "wifi";
+        } else {
+            if (mobile.isConnected()) {
+                TYPE = "mobil";
+            }else{
+                if (wimax!=null && wimax.isConnected()) {
+                    TYPE = "LTE";
+                }
+            }
+        }
+        if (!TYPE.equals("")) {
+            ActivityManager manager = (ActivityManager) getSystemService(ACTIVITY_SERVICE);
+            List<ActivityManager.RunningAppProcessInfo> runningProcesses = manager.getRunningAppProcesses();
 
-        if (runningProcesses != null && runningProcesses.size() > 0) {
-            Time now = new Time("UTC");
-            now.setToNow();
-            if (isExternalStorageWritable()) {
+            if (runningProcesses != null && runningProcesses.size() > 0) {
+                Time now = new Time("UTC");
+                now.setToNow();
+                if (isExternalStorageWritable()) {
 
-                ArrayList<Integer> pids = new ArrayList<Integer>();
+                    ArrayList<Integer> pids = new ArrayList<Integer>();
 
-                File pathToSd = Environment.getExternalStorageDirectory();
-                File file = new File(pathToSd, "LOGS");
-                file.mkdirs();
-                File file2 = new File(file.getAbsolutePath(), applog_dir);
-                file2.mkdirs();
-                if (!file2.exists()) {
-                    Log.e(TAG, "Directory not created");
-                } else {
-                    File logfile = new File(file2.getAbsolutePath() + "/" + RUNAPP_FILE);
-                    StringBuilder sb = new StringBuilder();
-                    if (!logfile.exists()) {
-                        sb.append("time;count_running;UIDS\n");
-                    }
-                    StringBuilder implode = new StringBuilder();
+                    File pathToSd = Environment.getExternalStorageDirectory();
+                    File file = new File(pathToSd, "LOGS");
+                    file.mkdirs();
+                    File file2 = new File(file.getAbsolutePath(), applog_dir);
+                    file2.mkdirs();
+                    if (!file2.exists()) {
+                        Log.e(TAG, "Directory not created");
+                    } else {
+                        File logfile = new File(file2.getAbsolutePath() + "/" + RUNAPP_FILE);
+                        StringBuilder sb = new StringBuilder();
+                        if (!logfile.exists()) {
+                            sb.append("time;count_running;UIDS\n");
+                        }
+                        StringBuilder implode = new StringBuilder();
 
-                    for (ActivityManager.RunningAppProcessInfo pi : runningProcesses) {
-                        pids.add(pi.pid);
-                        implode.append(pi.uid);
+                        for (ActivityManager.RunningAppProcessInfo pi : runningProcesses) {
+                            pids.add(pi.pid);
+                            implode.append(pi.uid);
                         /*pi.pid
                         pi.importance*/
-                        implode.append("#");
-                    }
-
-                    sb.append(now.format2445());
-                    sb.append(";");
-                    sb.append(runningProcesses.size());
-                    sb.append(";");
-                    sb.append(implode.toString().substring(0, implode.length() - 1));
-                    sb.append("\n");
-
-                    appendToFile(sb.toString(), file2.getAbsolutePath() + "/" + RUNAPP_FILE);
-                }
-
-                int[] polepid = new int[pids.size()];
-                int i = 0;
-                for (int n : pids) {
-                    polepid[i++] = n;
-                }
-                Debug.MemoryInfo mei[] = manager.getProcessMemoryInfo(polepid);
-
-                File procesfile = new File(file2.getAbsolutePath() + "/" + RUNNING_APPS_INFO);
-                StringBuilder uidLine = new StringBuilder();
-                if (!procesfile.exists()) {
-                    uidLine.append("Time;Name;UID;Pid;State;ppid;uTime;sTime;cutime;cstime;starttime;virtualmem;rss;" +
-                            "MemoryInfo-dalvikPrivateDirty;dalvikPss;dalvikSharedDirty;" +
-                            "nativePrivateDirty;nativePss;nativeSharedDirty;otherPrivateDirty;otherPss;otherSharedDirty;" +
-                            "TotalPrivateDirty;TotalSharedDirty\n");
-                }
-                i = 0;
-                for (ActivityManager.RunningAppProcessInfo pi : runningProcesses) {
-
-                    uidLine.append(now.format2445());//time of call this method
-                    uidLine.append(";");
-
-                    RandomAccessFile rifle = null;
-                    try {
-                        rifle = new RandomAccessFile("/proc/" + polepid[i] + "/stat", "r");
-                        String line = rifle.readLine();
-                        rifle.close();
-                        String[] stat = line.split("\\s");
-
-                        if(Integer.decode(stat[0])!=polepid[i]){
-                            Log.e(TAG,"Something is wrong: "+stat[0]+" != "+polepid[i]);
+                            implode.append("#");
                         }
 
-                        uidLine.append(stat[1] + ";");//name
-                        uidLine.append(pi.uid + ";");
-                        uidLine.append(stat[0] + ";");//pid
-                        uidLine.append(stat[2] + ";");//state R  Running, S  Sleeping, D  Waiting disk sleep, Z  Zombie, T  Stopped
-                        uidLine.append(stat[3] + ";");//parent pid
-                        uidLine.append(stat[14] + ";");//utime
-                        uidLine.append(stat[15] + ";");//stime
-                        uidLine.append(stat[16] + ";");//cutime
-                        uidLine.append(stat[17] + ";");//cstime
-                        uidLine.append(stat[22] + ";");//starttime
-                        uidLine.append(stat[23] + ";");//virtual mem
-                        uidLine.append(stat[24] + ";");//rss
-                        //(36) nswap
-                        //(37) cnswap
-                    } catch (IOException e) {
-                        e.printStackTrace();
+                        sb.append(now.format2445());
+                        sb.append(";");
+                        sb.append(runningProcesses.size());
+                        sb.append(";");
+                        sb.append(implode.toString().substring(0, implode.length() - 1));
+                        sb.append("\n");
+
+                        appendToFile(sb.toString(), file2.getAbsolutePath() + "/" + RUNAPP_FILE);
                     }
 
-                    uidLine.append(mei[i].dalvikPrivateDirty);uidLine.append(";");
-                    uidLine.append(mei[i].dalvikPss);uidLine.append(";");
-                    uidLine.append(mei[i].dalvikSharedDirty);uidLine.append(";");
-                    uidLine.append(mei[i].nativePrivateDirty);uidLine.append(";");
-                    uidLine.append(mei[i].nativePss);uidLine.append(";");
-                    uidLine.append(mei[i].nativeSharedDirty);uidLine.append(";");
-                    uidLine.append(mei[i].otherPrivateDirty);uidLine.append(";");
-                    uidLine.append(mei[i].otherPss);uidLine.append(";");
-                    uidLine.append(mei[i].otherSharedDirty);uidLine.append(";");
-                    //kikat uidLine.append(mei[i].getTotalPrivateClean());
-                    //kikat uidLine.append(mei[i].getTotalSharedClean());
-                    uidLine.append(mei[i].getTotalPrivateDirty());uidLine.append(";");
-                    uidLine.append(mei[i].getTotalSharedDirty());
-                    uidLine.append("\n");
+                    int[] polepid = new int[pids.size()];
+                    int i = 0;
+                    for (int n : pids) {
+                        polepid[i++] = n;
+                    }
+                    Debug.MemoryInfo mei[] = manager.getProcessMemoryInfo(polepid);
 
-                    appendToFile(uidLine.toString(),procesfile.getPath());
+                    File procesfile = new File(file2.getAbsolutePath() + "/" + RUNNING_APPS_INFO);
+                    StringBuilder uidLine = new StringBuilder();
+                    if (!procesfile.exists()) {
+                        uidLine.append("Time;Name;UID;Pid;State;ppid;uTime;sTime;cutime;cstime;starttime;virtualmem;rss;" +
+                                "MemoryInfo-dalvikPrivateDirty;dalvikPss;dalvikSharedDirty;" +
+                                "nativePrivateDirty;nativePss;nativeSharedDirty;otherPrivateDirty;otherPss;otherSharedDirty;" +
+                                "TotalPrivateDirty;TotalSharedDirty\n");
+                    }
+                    i = 0;
+                    for (ActivityManager.RunningAppProcessInfo pi : runningProcesses) {
 
-                    i++;
-                }
+                        uidLine.append(now.format2445());//time of call this method
+                        uidLine.append(";");
 
-            } else Log.d(TAG, "Non writable storage");
-        } else {
-            Log.d(TAG, "No app is running");
+                        RandomAccessFile rifle = null;
+                        try {
+                            rifle = new RandomAccessFile("/proc/" + polepid[i] + "/stat", "r");
+                            String line = rifle.readLine();
+                            rifle.close();
+                            String[] stat = line.split("\\s");
+
+                            if (Integer.decode(stat[0]) != polepid[i]) {
+                                Log.e(TAG, "Something is wrong: " + stat[0] + " != " + polepid[i]);
+                            }
+
+                            //if(stat[1]=="")
+                            uidLine.append(stat[1] + ";");//name
+                            uidLine.append(pi.uid + ";");
+                            uidLine.append(stat[0] + ";");//pid
+                            uidLine.append(stat[2] + ";");//state R  Running, S  Sleeping, D  Waiting disk sleep, Z  Zombie, T  Stopped
+                            uidLine.append(stat[3] + ";");//parent pid
+                            uidLine.append(stat[14] + ";");//utime
+                            uidLine.append(stat[15] + ";");//stime
+                            uidLine.append(stat[16] + ";");//cutime
+                            uidLine.append(stat[17] + ";");//cstime
+                            uidLine.append(stat[22] + ";");//starttime
+                            uidLine.append(stat[23] + ";");//virtual mem
+                            uidLine.append(stat[24] + ";");//rss
+                            //(36) nswap
+                            //(37) cnswap
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+
+                        uidLine.append(mei[i].dalvikPrivateDirty);
+                        uidLine.append(";");
+                        uidLine.append(mei[i].dalvikPss);
+                        uidLine.append(";");
+                        uidLine.append(mei[i].dalvikSharedDirty);
+                        uidLine.append(";");
+                        uidLine.append(mei[i].nativePrivateDirty);
+                        uidLine.append(";");
+                        uidLine.append(mei[i].nativePss);
+                        uidLine.append(";");
+                        uidLine.append(mei[i].nativeSharedDirty);
+                        uidLine.append(";");
+                        uidLine.append(mei[i].otherPrivateDirty);
+                        uidLine.append(";");
+                        uidLine.append(mei[i].otherPss);
+                        uidLine.append(";");
+                        uidLine.append(mei[i].otherSharedDirty);
+                        uidLine.append(";");
+                        //kikat uidLine.append(mei[i].getTotalPrivateClean());
+                        //kikat uidLine.append(mei[i].getTotalSharedClean());
+                        uidLine.append(mei[i].getTotalPrivateDirty());
+                        uidLine.append(";");
+                        uidLine.append(mei[i].getTotalSharedDirty());
+                        uidLine.append("\n");
+
+                        appendToFile(uidLine.toString(), procesfile.getPath());
+
+                        i++;
+                    }
+
+                } else Log.d(TAG, "Non writable storage");
+            } else {
+                Log.d(TAG, "No app is running");
+            }
         }
     }
 

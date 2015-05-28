@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="horizontal" android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <ImageView
+        android:id="@+id/iitemicon"
+        android:layout_width="40dp"
+        android:layout_height="40dp">
+    </ImageView>
+
+    <CheckBox
+        android:id="@+id/iitemcheck_wifi"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:padding="0px"
+        android:color="#000"
+        style="@android:style/Widget.CompoundButton.CheckBox"
+        android:background="#ffdadada">
+    </CheckBox>
+
+    <TextView
+        android:id="@+id/iitemtext"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:paddingLeft="5dp"
+        android:textIsSelectable="false"
+        android:color="#000"
+        >
+    </TextView>
+</LinearLayout>

@@ -1,11 +1,15 @@
 package eu.mcomputing.syslogger;
 
+import android.app.AlarmManager;
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
+import android.content.pm.ApplicationInfo;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -21,24 +25,37 @@ import android.widget.ArrayAdapter;
 import android.support.v4.app.Fragment;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
+
 import android.os.Handler;
+import android.widget.ListView;
 import android.widget.ToggleButton;
 
 import eu.mcomputing.syslogger.screen.LinuxLogFragment;
 import eu.mcomputing.syslogger.screen.LogCatFragment;
 import eu.mcomputing.syslogger.screen.MenuFragment;
 import eu.mcomputing.syslogger.screen.VPN_fragment;
+import eu.mcomputing.syslogger.services.AppInfoService;
 import eu.mcomputing.syslogger.services.LoggerService;
+import eu.mcomputing.syslogger.services.NetDevService;
 import eu.mcomputing.syslogger.services.VPN_logger_service;
 import eu.mcomputing.syslogger.utils.MyDBAdapter;
 import eu.mcomputing.syslogger.utils.NmapBinaryInstaller;
+import eu.mcomputing.syslogger.utils.PackageInfoData;
 
 
 public class MyMainActivity extends FragmentActivity implements LogCatFragment.OnFragmentInteractionListener, LinuxLogFragment.OnFragmentInteractionListener, VPN_fragment.OnFragmentInteractionListener {
     private LoggerService s;
     private ArrayAdapter<String> adapter;
     private List<String> wordList;
+
+    private ListView listview = null;
 
     boolean mIsBound = false;
     private NotificationManager mNM;
@@ -53,12 +70,16 @@ public class MyMainActivity extends FragmentActivity implements LogCatFragment.O
 
     private static File binPath = null;
     private int netDevRunning = 0;
+    public int index = 0;
+    public int top = 0;
     private int NOTIFICATION = R.string.virdir_service_started;
+    public static final String DEVICE_ID = "device_id";
     public static Handler mUiHandler = null;
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        unregisterReceiver(broadcastReceiver);
     }
 
     public void changeFragment(Fragment fr){
@@ -89,7 +110,7 @@ public class MyMainActivity extends FragmentActivity implements LogCatFragment.O
         boolean first = true;
         //first Create Install
         SharedPreferences preferences = getSharedPreferences("myPrefs", Context.MODE_PRIVATE);
-        first = preferences.getBoolean("first",true);
+        first = preferences.getBoolean("first", true);
         if(first){
             NmapBinaryInstaller installer = new NmapBinaryInstaller(getApplicationContext());
             installer.installResources();
@@ -107,16 +128,18 @@ public class MyMainActivity extends FragmentActivity implements LogCatFragment.O
         binPath = getDir("bin", Context.MODE_MULTI_PROCESS);
 
         setContentView(R.layout.activity_my_main);
-        MenuFragment menuf = MenuFragment.newInstance();
+        mNM = (NotificationManager)getSystemService(NOTIFICATION_SERVICE);
 
+        MenuFragment menuf = MenuFragment.newInstance();
         menuf.setArguments(savedInstanceState);
+
+        registerReceiver(broadcastReceiver, new IntentFilter("STOP_ME"));
 
         FragmentManager fm = getSupportFragmentManager();
         FragmentTransaction ft = fm.beginTransaction();
         ft.replace(R.id.fragmentPlace, menuf);
         ft.commit();
 
-        mNM = (NotificationManager)getSystemService(NOTIFICATION_SERVICE);
     }
 
     @Override
@@ -136,6 +159,10 @@ public class MyMainActivity extends FragmentActivity implements LogCatFragment.O
         SharedPreferences.Editor editor = preferences.edit();
         editor.putInt("run", netDevRunning);                                     //??test
         editor.apply();
+
+        /*index = this.listview.getFirstVisiblePosition();
+        View v = this.listview.getChildAt(0);
+        top = (v == null) ? 0 : v.getTop();*/
     }
 
     @Override
@@ -224,4 +251,69 @@ public class MyMainActivity extends FragmentActivity implements LogCatFragment.O
             return manufacturer+" "+model;
         }
     }
+
+    public void startLog(){
+        //run just once
+        SharedPreferences preferences = getSharedPreferences("myPrefs", Context.MODE_PRIVATE);
+        boolean first = preferences.getBoolean("run_app_info", true);
+        if(first){
+            AlarmManager alarm = (AlarmManager) this.getSystemService(Context.ALARM_SERVICE);
+
+            Intent intent = new Intent(this, NetDevService.class);
+            intent.putExtra(DEVICE_ID,this.getDeviceID());
+            PendingIntent pintent = PendingIntent.getService(this, 2580, intent, 0);
+
+            alarm.setRepeating(AlarmManager.RTC_WAKEUP, System.currentTimeMillis(), (20 * 60 * 1000), pintent);
+
+            ///////////////////
+            Intent apintent = new Intent(this, AppInfoService.class);
+            apintent.setAction(AppInfoService.ACTION_GETAPP);
+            PendingIntent appintent = PendingIntent.getService(this, 1234, apintent, 0);
+            try {
+                appintent.send();
+            } catch (PendingIntent.CanceledException e) {
+                e.printStackTrace();
+            }
+            //this.startService(appintent);
+
+            //alarm.setRepeating(AlarmManager.RTC_WAKEUP, System.currentTimeMillis(), (30*60*1000), appintent);
+            //run every time
+            Intent runintent = new Intent(this, AppInfoService.class);
+            runintent.setAction(AppInfoService.ACTION_RUNAPP);
+            PendingIntent runpintent = PendingIntent.getService(this, 1818, runintent, 0);
+
+            alarm.setRepeating(AlarmManager.RTC_WAKEUP, System.currentTimeMillis(), (30 * 60 * 1000), runpintent);
+            preferences.edit().putBoolean("run_app_info", false).apply();
+        }
+    }
+
+    public void stopLog() {
+        AlarmManager alarm = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
+
+        Intent intent = new Intent(this, NetDevService.class);
+            intent.putExtra(DEVICE_ID, this.getDeviceID());
+        PendingIntent    pintent = PendingIntent.getService(this, 2580, intent, PendingIntent.FLAG_CANCEL_CURRENT);
+
+        alarm.cancel(pintent);
+
+        Intent apintent = new Intent(this, AppInfoService.class);
+        apintent.setAction(AppInfoService.ACTION_GETAPP);
+        PendingIntent appintent = PendingIntent.getService(this, 1234, apintent, PendingIntent.FLAG_CANCEL_CURRENT);
+
+        alarm.cancel(appintent);
+
+        //if (runpintent==null) {
+        Intent runintent = new Intent(this, AppInfoService.class);
+            runintent.setAction(AppInfoService.ACTION_RUNAPP);
+        PendingIntent   runpintent = PendingIntent.getService(this, 1818, runintent, PendingIntent.FLAG_CANCEL_CURRENT);
+        //}
+        alarm.cancel(runpintent);
+    }
+
+    BroadcastReceiver broadcastReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            stopLog();
+        }
+    };
 }

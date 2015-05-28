@@ -59,7 +59,12 @@ public class MyDBAdapter {
                     + "ip TEXT PRIMARY KEY,"
                     + "name TEXT,"
                     + "ports TEXT" + ")");
+            _db.execSQL("CREATE TABLE app_net("
+                    + "uid INTEGER PRIMARY KEY,"
+                    + "tx INTEGER,"
+                    + "rx INTEGER" + ")");
         }
+
 
         @Override
         public void onUpgrade(SQLiteDatabase arg0, int arg1, int arg2) {
@@ -115,20 +120,68 @@ public class MyDBAdapter {
         return list;
     }
 
-   /* public int updateRecord(int id, String str) {
+    public void insertNet(int... str) {
+        if (!isOpen()) {
+            open();
+        }
+        ContentValues initialValues = new ContentValues();
+        // as column'a' is INTEGER PRIMARY KEY, it get increament by SQLite
+        initialValues.put("uid", str[0]);
+        initialValues.put("tx", str[1]);
+        initialValues.put("rx", str[2]);
+        db.insert("app_net", // table name
+                null, initialValues // column name-value pairs
+        );
+
+        db.close();
+    }
+
+    public List<Integer> getNet(int uid) throws SQLException {
+        List<Integer> list = new ArrayList<Integer>();
+        if (!isOpen()) {
+            open();
+        }
+        Cursor mCursor = db.query(true, // isdistinct
+                "app_net", // table name
+                new String[] { "uid", "tx", "rx" },// select clause
+                "uid='"+uid+"'", // where cluase
+                null, // where clause parameters
+                null, // group by
+                null, // having
+                null, // orderby
+                null);// limit
+
+        if (mCursor != null) {
+            // mCursor.moveToFirst();
+            if (mCursor.moveToFirst()) {
+                do {
+                    list.add(mCursor.getInt(0));
+                    list.add(mCursor.getInt(1));
+                    list.add(mCursor.getInt(2));
+                } while (mCursor.moveToNext());
+            }
+        }
+        if (!mCursor.isClosed())
+            mCursor.close();
+        close();
+        return list;
+    }
+
+    public int updateNet(int uid, int tx, int rx) {
         int result = -1;
         if (!isOpen()) {
             open();
         }
         ContentValues values = new ContentValues();
-        values.put("b", str);
-        result = db.update("t1", // table
+        values.put("tx", tx);
+        values.put("rx", rx);
+        result = db.update("app_net", // table
                 values, // values to be updated
-                "a" + "=" + id,// where clause
+                "uid" + "=" + uid,// where clause
                 null);
         close();
         return result;
-    }*/
+    }
 
     /*public int deleteRecord(int id) {
         System.out.println("Inside deleteAccount.");

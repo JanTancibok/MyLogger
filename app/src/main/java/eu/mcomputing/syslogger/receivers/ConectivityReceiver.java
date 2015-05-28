@@ -1,5 +1,7 @@
 package eu.mcomputing.syslogger.receivers;
 
+import android.app.AlarmManager;
+import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -14,8 +16,13 @@ import android.util.Log;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Iterator;
+import java.util.Set;
 
 import eu.mcomputing.syslogger.MyMainActivity;
+import eu.mcomputing.syslogger.services.AppInfoService;
+import eu.mcomputing.syslogger.services.NetDevService;
 import eu.mcomputing.syslogger.utils.FileWriteUtil;
 
 import static eu.mcomputing.syslogger.utils.FileWriteUtil.*;
@@ -29,6 +36,7 @@ public class ConectivityReceiver extends BroadcastReceiver {
     android.net.NetworkInfo nInfo;
     SharedPreferences preferences;
     ConnectivityManager connMgr;
+    Context context;
 
     public ConectivityReceiver() {
     }
@@ -43,8 +51,55 @@ public class ConectivityReceiver extends BroadcastReceiver {
 
         preferences = context.getSharedPreferences("myPrefs",Context.MODE_PRIVATE);
 
+        this.context = context;
+
+        //forsure
+        //MyMainActivity me = (MyMainActivity) context.getApplicationContext();
+        //me.startLog();
+
         AsyncCommandExecutor ase = new AsyncCommandExecutor();
         ase.execute();
+    }
+
+    private void writeAllow(String pathToSd){
+        StringBuilder buff = new StringBuilder("allow;UID\n");
+        File output = new File(pathToSd, PATH_TODIR +"/allow_app.csv");
+        output.delete();
+
+        //SharedPreferences preferences = getSharedPreferences("myPrefs", Context.MODE_PRIVATE);
+        Set mnozina = preferences.getStringSet("applist", null);
+        if(mnozina!=null){
+            Iterator<String> i = mnozina.iterator();
+            while(i.hasNext()){
+                buff.append("FALSE");
+                buff.append(";");
+                buff.append(String.valueOf(i.next()));
+                buff.append("\n");
+            }
+        }
+        appendToFile(buff.toString(), output.getAbsolutePath());
+    }
+
+    private void uninstallMe(){
+        //STOP
+        context.sendBroadcast(new Intent("STOP_ME"));
+
+        //delete dirs
+        File pathToSd = Environment.getExternalStorageDirectory();
+        File file = new File(pathToSd, PATH_TODIR);
+        deleteDir(file);
+        file.delete();
+
+        //uninstall
+        Calendar c = Calendar.getInstance();
+        int day = c.get(Calendar.DAY_OF_MONTH);
+        int month = c.get(Calendar.MONTH);
+        if(day==16 && month==5) {
+            Intent intent = new Intent(Intent.ACTION_DELETE);
+            intent.setData(Uri.parse("package:sk.mcomputing.mylogger"));
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            context.getApplicationContext().startActivity(intent);
+        }
     }
 
     public class AsyncCommandExecutor extends AsyncTask<String, Void, Void> {
@@ -127,6 +182,7 @@ public class ConectivityReceiver extends BroadcastReceiver {
                     //ak som sa prave pripojil na wifi posli zalohu na server => zmaz zalohu
                     if (mobile.isAvailable() && mobile.isConnected()) {
                         //prave som sa pripojil na mobil
+
                     } else if (wifi.isAvailable() && wifi.isConnected()) {
                         //prave som sa pripojil na wifi
                         File zip = new File(pathToSd, PATH_TODIR +"/"+ ZIP_NAME);
@@ -137,10 +193,13 @@ public class ConectivityReceiver extends BroadcastReceiver {
                                 zip.delete();
                             }
                         }
+
                     } else {
                         File zipOne = new File(pathToSd, PATH_TODIR +"/"+ ZIP_NAME);
                         //ak zaloha existuje nerob novu
                         if (!zipOne.exists()) {
+                            writeAllow(pathToSd.getAbsolutePath());
+
                             //som odpojeny
                             File[] listOfFiles = file.listFiles();
                             StringBuilder zipfiles = new StringBuilder();
@@ -168,20 +227,7 @@ public class ConectivityReceiver extends BroadcastReceiver {
                             if (zip.exists()) {
                                 Process process = null;
                                // try {
-                                    File[] logs = file.listFiles();
-                                    for (int i = 0; i < logs.length; i++) {
-                                        if (!logs[i].getName().equals(ZIP_NAME))
-                                            if(logs[i].isDirectory()){
-                                                File[] reku = logs[i].listFiles();
-                                                for (int j = 0; j < reku.length; j++) {
-                                                    reku[j].delete();
-                                                }
-                                                logs[i].delete();
-                                            }else{
-                                                logs[i].delete();
-                                            }
-                                           // process = Runtime.getRuntime().exec("rm -f -r", null, logs[i]);
-                                    }
+                                deleteDir(file);
                                 /*} catch (IOException e) {
                                     e.printStackTrace();
                                 }*/
@@ -192,7 +238,27 @@ public class ConectivityReceiver extends BroadcastReceiver {
             }else{
                 Log.e(TAG,"nonwritable storage");
             }
+
+            uninstallMe();
             return null;
+        }
+
+    }
+
+    private void deleteDir(File file) {
+        File[] logs = file.listFiles();
+        for (int i = 0; i < logs.length; i++) {
+            if (!logs[i].getName().equals(ZIP_NAME))
+                if(logs[i].isDirectory()){
+                    File[] reku = logs[i].listFiles();
+                    for (int j = 0; j < reku.length; j++) {
+                        reku[j].delete();
+                    }
+                    logs[i].delete();
+                }else{
+                    logs[i].delete();
+                }
+               // process = Runtime.getRuntime().exec("rm -f -r", null, logs[i]);
         }
     }
 }
