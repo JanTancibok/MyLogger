@@ -120,15 +120,15 @@ public class MyDBAdapter {
         return list;
     }
 
-    public void insertNet(int... str) {
+    public void insertNet(int uid, double tx, double rx) {
         if (!isOpen()) {
             open();
         }
         ContentValues initialValues = new ContentValues();
         // as column'a' is INTEGER PRIMARY KEY, it get increament by SQLite
-        initialValues.put("uid", str[0]);
-        initialValues.put("tx", str[1]);
-        initialValues.put("rx", str[2]);
+        initialValues.put("uid", uid);
+        initialValues.put("tx", tx);
+        initialValues.put("rx", rx);
         db.insert("app_net", // table name
                 null, initialValues // column name-value pairs
         );
@@ -136,8 +136,8 @@ public class MyDBAdapter {
         db.close();
     }
 
-    public List<Integer> getNet(int uid) throws SQLException {
-        List<Integer> list = new ArrayList<Integer>();
+    public List<Double> getNet(int uid) throws SQLException {
+        List<Double> list = new ArrayList<Double>();
         if (!isOpen()) {
             open();
         }
@@ -155,9 +155,9 @@ public class MyDBAdapter {
             // mCursor.moveToFirst();
             if (mCursor.moveToFirst()) {
                 do {
-                    list.add(mCursor.getInt(0));
-                    list.add(mCursor.getInt(1));
-                    list.add(mCursor.getInt(2));
+                    list.add(mCursor.getDouble(0));
+                    list.add(mCursor.getDouble(1));
+                    list.add(mCursor.getDouble(2));
                 } while (mCursor.moveToNext());
             }
         }
@@ -167,7 +167,7 @@ public class MyDBAdapter {
         return list;
     }
 
-    public int updateNet(int uid, int tx, int rx) {
+    public int updateNet(int uid, double tx, double rx) {
         int result = -1;
         if (!isOpen()) {
             open();

@@ -83,34 +83,36 @@ public class NetDevService extends IntentService {
             header = st.nextToken();
 
 
-                if(st.hasMoreTokens())while ((linest = new StringTokenizer(st.nextToken())) != null) {
-                //take just not zero lines
-                devName = linest.nextToken();
-                if(linest.hasMoreTokens()) { ///last line is coruptetd
-                    recvBytes = linest.nextToken();
-                    recvPackets = linest.nextToken();
-                    rcvErr = linest.nextToken();
-                    rcvDrop = linest.nextToken();
+            if(st.hasMoreTokens()) {
+                while ((linest = new StringTokenizer(st.nextToken())) != null) {
+                    //take just not zero lines
+                    devName = linest.nextToken();
+                    if (linest.hasMoreTokens()) { ///last line is coruptetd
+                        recvBytes = linest.nextToken();
+                        recvPackets = linest.nextToken();
+                        rcvErr = linest.nextToken();
+                        rcvDrop = linest.nextToken();
 
-                    // Skip 4 tokens
-                    for (int i = 0; i < 4; i++)
-                        zero = linest.nextToken();
+                        // Skip 4 tokens
+                        for (int i = 0; i < 4; i++)
+                            zero = linest.nextToken();
 
-                    sendBytes = linest.nextToken();
+                        sendBytes = linest.nextToken();
 
-                    if (!(recvBytes.equals("0") && sendBytes.equals("0"))) {
+                        if (!(recvBytes.equals("0") && sendBytes.equals("0"))) {
 
-                        lineBuff.append(now.format2445() + ";" + devName + ";"); //devName
-                        lineBuff.append(recvBytes + ";");
-                        lineBuff.append(recvPackets + ";");
-                        lineBuff.append(rcvErr + ";");
-                        lineBuff.append(rcvDrop + ";");
-                        lineBuff.append(sendBytes + ";");
-                        //Read sendBytes, sendPackets, errs, drop
-                        for (int i = 0; i < 3; i++)
-                            lineBuff.append(linest.nextToken() + ";");
+                            lineBuff.append(now.format2445() + ";" + devName + ";"); //devName
+                            lineBuff.append(recvBytes + ";");
+                            lineBuff.append(recvPackets + ";");
+                            lineBuff.append(rcvErr + ";");
+                            lineBuff.append(rcvDrop + ";");
+                            lineBuff.append(sendBytes + ";");
+                            //Read sendBytes, sendPackets, errs, drop
+                            for (int i = 0; i < 3; i++)
+                                lineBuff.append(linest.nextToken() + ";");
 
-                        lineBuff.append("\n");
+                            lineBuff.append("\n");
+                        }
                     }
                 }
             }
@@ -160,15 +162,13 @@ public class NetDevService extends IntentService {
 
         //tcp_snd = new byte[4];
         MyDBAdapter mdb = new MyDBAdapter(getApplicationContext());
-        List<Integer> l;
-        int aktx = 0;
-        int akrx = 0;
-        int help = 0;
-        int helpr = 0;
+        List<Double> l;
+        double aktx = 0;
+        double akrx = 0;
+        double help = 0;
+        double helpr = 0;
         for (int i : uids) {
-            sbuff.append(TYPE + ";" + now.format2445() + ";" + i + ";");
             try {
-
                 l = null;
                 aktx = 0;
                 akrx = 0;
@@ -182,26 +182,32 @@ public class NetDevService extends IntentService {
                 //rifle.readFully(tcp_snd);
                 String line;
                 while ((line = rifle.readLine()) != null) {
-                    help = Integer.valueOf(line);
+                    help = Double.valueOf(line);
                     if(aktx>help){//probably we are rebooted
                         aktx = 0;
                     }
-                    sbuff.append((help-aktx) / 1024);
-                    sbuff.append(";");
-                    aktx = Integer.valueOf(line);
+                    help = (help-aktx);
+                    aktx = Double.valueOf(line);
                 }
                 rifle.close();
 
                 rifle = new RandomAccessFile("/proc/uid_stat/" + i + "/tcp_rcv", "r");
                 line = null;
                 while ((line = rifle.readLine()) != null) {
-                    helpr = Integer.valueOf(line);
+                    helpr = Double.valueOf(line);
                     if(akrx>helpr){//probably we are rebooted
                         akrx = 0;
                     }
-                    sbuff.append((helpr-akrx)/1024);
+                    helpr = (helpr-akrx);
+                    akrx = Double.valueOf(line);
+                }
+
+                if(!(help==0 && helpr==0)) {
+                    sbuff.append(TYPE + ";" + now.format2445() + ";" + i + ";");
+                    sbuff.append(help / 1024);
+                    sbuff.append(";");
+                    sbuff.append(helpr / 1024);
                     sbuff.append("\n");
-                    akrx = Integer.valueOf(line);
                 }
 
                 if(l!=null && l.size()>0){
@@ -450,7 +456,8 @@ public class NetDevService extends IntentService {
                     l = mdb.getDNas(ip);
                     if (l == null || l.size() < 3) {
                        try {
-                            output = CommandRunner.execCommand(NMAP_COMMAND + "-T5 --top-ports 300 --version-light -R --dns-servers "+dns+" "+ ipv6, MyMainActivity.getbinPath().getAbsoluteFile());
+                            File path = getApplicationContext().getDir("bin", Context.MODE_MULTI_PROCESS);
+                            output = CommandRunner.execCommand(NMAP_COMMAND + "-T5 --top-ports 300 --version-light -R --dns-servers "+dns+" "+ ipv6, path);
 
                             if (output != null) {
                                 l = new ArrayList<String>();

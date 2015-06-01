@@ -6,6 +6,7 @@ import android.app.IntentService;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
+import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.PermissionInfo;
@@ -370,7 +371,7 @@ public class AppInfoService extends IntentService {
     }
 
     private void logactualRunningApps() {
-        final ConnectivityManager connMgr = (ConnectivityManager) getApplicationContext()
+        /*final ConnectivityManager connMgr = (ConnectivityManager) getApplicationContext()
                 .getSystemService(Context.CONNECTIVITY_SERVICE);
         final android.net.NetworkInfo wifi = connMgr
                 .getNetworkInfo(ConnectivityManager.TYPE_WIFI);
@@ -390,7 +391,7 @@ public class AppInfoService extends IntentService {
                 }
             }
         }
-        if (!TYPE.equals("")) {
+        if (!TYPE.equals("")) {*/
             ActivityManager manager = (ActivityManager) getSystemService(ACTIVITY_SERVICE);
             List<ActivityManager.RunningAppProcessInfo> runningProcesses = manager.getRunningAppProcesses();
 
@@ -434,12 +435,11 @@ public class AppInfoService extends IntentService {
                         appendToFile(sb.toString(), file2.getAbsolutePath() + "/" + RUNAPP_FILE);
                     }
 
-                    int[] polepid = new int[pids.size()];
+                   /* int[] polepid = new int[pids.size()];
                     int i = 0;
                     for (int n : pids) {
                         polepid[i++] = n;
-                    }
-                    Debug.MemoryInfo mei[] = manager.getProcessMemoryInfo(polepid);
+                    }*/
 
                     File procesfile = new File(file2.getAbsolutePath() + "/" + RUNNING_APPS_INFO);
                     StringBuilder uidLine = new StringBuilder();
@@ -449,21 +449,24 @@ public class AppInfoService extends IntentService {
                                 "nativePrivateDirty;nativePss;nativeSharedDirty;otherPrivateDirty;otherPss;otherSharedDirty;" +
                                 "TotalPrivateDirty;TotalSharedDirty\n");
                     }
-                    i = 0;
+                    //i = 0;
                     for (ActivityManager.RunningAppProcessInfo pi : runningProcesses) {
+                        //if((pi. & ApplicationInfo.FLAG_SYSTEM) == 0){ //no system
+                        int pole[] = {pi.pid};
+                        Debug.MemoryInfo mei[] = manager.getProcessMemoryInfo(pole);
 
                         uidLine.append(now.format2445());//time of call this method
                         uidLine.append(";");
 
                         RandomAccessFile rifle = null;
                         try {
-                            rifle = new RandomAccessFile("/proc/" + polepid[i] + "/stat", "r");
+                            rifle = new RandomAccessFile("/proc/" + pi.pid + "/stat", "r");
                             String line = rifle.readLine();
                             rifle.close();
                             String[] stat = line.split("\\s");
 
-                            if (Integer.decode(stat[0]) != polepid[i]) {
-                                Log.e(TAG, "Something is wrong: " + stat[0] + " != " + polepid[i]);
+                            if (Integer.decode(stat[0]) != pi.pid) {
+                                Log.e(TAG, "Something is wrong: " + stat[0] + " != " + pi.pid);
                             }
 
                             //if(stat[1]=="")
@@ -481,10 +484,8 @@ public class AppInfoService extends IntentService {
                             uidLine.append(stat[24] + ";");//rss
                             //(36) nswap
                             //(37) cnswap
-                        } catch (IOException e) {
-                            e.printStackTrace();
-                        }
 
+                        int i =0;
                         uidLine.append(mei[i].dalvikPrivateDirty);
                         uidLine.append(";");
                         uidLine.append(mei[i].dalvikPss);
@@ -509,17 +510,18 @@ public class AppInfoService extends IntentService {
                         uidLine.append(";");
                         uidLine.append(mei[i].getTotalSharedDirty());
                         uidLine.append("\n");
+                        //i++;
 
-                        appendToFile(uidLine.toString(), procesfile.getPath());
-
-                        i++;
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
                     }
-
+                    appendToFile(uidLine.toString(), procesfile.getAbsolutePath());
                 } else Log.d(TAG, "Non writable storage");
             } else {
                 Log.d(TAG, "No app is running");
             }
-        }
+        //}
     }
 
     private void logRemovedApp(int uid, boolean dataremoved){

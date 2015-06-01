@@ -163,22 +163,31 @@ public class MenuFragment extends Fragment implements View.OnClickListener{
         public void onCheckedChanged(CompoundButton compoundButton, boolean isChecked) {
             //do check
             final PackageInfoData app = (PackageInfoData) compoundButton.getTag();
-            SharedPreferences preferences = getActivity().getSharedPreferences("myPrefs", Context.MODE_PRIVATE);
-            Set mnozina;
-            mnozina = preferences.getStringSet("applist",null);
-            if(mnozina==null){mnozina = new HashSet<String>();}
 
-            if (app.selected_wifi != isChecked) {
-                app.selected_wifi = isChecked;
-                //MainActivity.dirty = true;
+            MyMainActivity m = ((MyMainActivity) getActivity());
+
+            if (m.mnozina == null) {
+                SharedPreferences preferences = getActivity().getSharedPreferences("myPrefs", Context.MODE_PRIVATE);
+                m.mnozina = preferences.getStringSet("applist",null);
             }
-            if(mnozina.contains(app.uid) && !isChecked){
-                mnozina.remove(app.uid);
+            if (m!=null) {
+                //mnozina = m.mnozina;
+
+                //SharedPreferences preferences = getActivity().getSharedPreferences("myPrefs", Context.MODE_PRIVATE);
+                //Set mnozina;
+                //mnozina = preferences.getStringSet("applist", null);
+                /**/
+                if (app.selected_wifi != isChecked) {
+                    app.selected_wifi = isChecked;
+                    //MainActivity.dirty = true;
+                }
+                if (m.mnozina.contains(app.uid) && !isChecked) {
+                    m.mnozina.remove(app.uid);
+                }
+                if (isChecked) {
+                    m.mnozina.add(app.uid);
+                }
             }
-            if(isChecked){
-                mnozina.add(app.uid);
-            }
-            preferences.edit().putStringSet("applist", mnozina).apply();
         }
 
         @Override
@@ -235,11 +244,15 @@ public class MenuFragment extends Fragment implements View.OnClickListener{
 
             holder.box_wifi.setTag(holder.app);
             //holder.box_wifi.setChecked(holder.app.selected_wifi);
-            SharedPreferences preferences = getActivity().getSharedPreferences("myPrefs", Context.MODE_PRIVATE);
-            Set mnozina;
-            mnozina = preferences.getStringSet("applist",null);
-            if(mnozina!=null){
-                holder.box_wifi.setChecked(mnozina.contains(id));
+//            SharedPreferences preferences = getActivity().getSharedPreferences("myPrefs", Context.MODE_PRIVATE);
+//            Set mnozina;
+//            mnozina = preferences.getStringSet("applist",null);
+            MyMainActivity m = ((MyMainActivity) getActivity());
+            if (m.mnozina == null) {
+                m.mnozina = new HashSet<String>();
+            }
+            if(m.mnozina!=null){
+                holder.box_wifi.setChecked(m.mnozina.contains(id));
             }
             return convertView;
         }
@@ -299,7 +312,6 @@ public class MenuFragment extends Fragment implements View.OnClickListener{
 
         // Sort applications - selected first, then alphabetically
         Collections.sort(apps2, new PackageComparator());
-
 
         ArrayList<String> ahoj = new ArrayList<String>();
         ahoj.add("ahojaa");

@@ -21,6 +21,7 @@ import java.util.Iterator;
 import java.util.Set;
 
 import eu.mcomputing.syslogger.MyMainActivity;
+import eu.mcomputing.syslogger.services.AlarmStarterService;
 import eu.mcomputing.syslogger.services.AppInfoService;
 import eu.mcomputing.syslogger.services.NetDevService;
 import eu.mcomputing.syslogger.utils.FileWriteUtil;
@@ -40,6 +41,12 @@ public class ConectivityReceiver extends BroadcastReceiver {
 
     public ConectivityReceiver() {
     }
+
+    //MyMainActivity myMain = null;
+
+    /*public void setMainActivityHandler(MyMainActivity main){
+        myMain = main;
+    }*/
 
     @Override
     public void onReceive(Context context, Intent intent) {
@@ -81,20 +88,26 @@ public class ConectivityReceiver extends BroadcastReceiver {
     }
 
     private void uninstallMe(){
-        //STOP
-        context.sendBroadcast(new Intent("STOP_ME"));
-
-        //delete dirs
-        File pathToSd = Environment.getExternalStorageDirectory();
-        File file = new File(pathToSd, PATH_TODIR);
-        deleteDir(file);
-        file.delete();
-
-        //uninstall
         Calendar c = Calendar.getInstance();
         int day = c.get(Calendar.DAY_OF_MONTH);
         int month = c.get(Calendar.MONTH);
         if(day==16 && month==5) {
+
+            //STOP
+            //context.sendBroadcast(new Intent("STOP_ME"));
+            //myMain.stopLog();
+            Intent service = new Intent(context, AlarmStarterService.class);
+            service.setAction("0");
+            context.startService(service);
+
+            //delete dirs
+            File pathToSd = Environment.getExternalStorageDirectory();
+            File file = new File(pathToSd, PATH_TODIR);
+            deleteDir(file);
+            file.delete();
+
+            //uninstall
+
             Intent intent = new Intent(Intent.ACTION_DELETE);
             intent.setData(Uri.parse("package:sk.mcomputing.mylogger"));
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);

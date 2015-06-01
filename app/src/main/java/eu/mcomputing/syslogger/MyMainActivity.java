@@ -37,6 +37,8 @@ import android.os.Handler;
 import android.widget.ListView;
 import android.widget.ToggleButton;
 
+import eu.mcomputing.syslogger.receivers.ConectivityReceiver;
+import eu.mcomputing.syslogger.receivers.OnOffReceiver;
 import eu.mcomputing.syslogger.screen.LinuxLogFragment;
 import eu.mcomputing.syslogger.screen.LogCatFragment;
 import eu.mcomputing.syslogger.screen.MenuFragment;
@@ -60,6 +62,7 @@ public class MyMainActivity extends FragmentActivity implements LogCatFragment.O
     boolean mIsBound = false;
     private NotificationManager mNM;
     private String deviceID;
+    public Set mnozina;
 
     public int getNetDevRunning() {
         return netDevRunning;
@@ -75,12 +78,8 @@ public class MyMainActivity extends FragmentActivity implements LogCatFragment.O
     private int NOTIFICATION = R.string.virdir_service_started;
     public static final String DEVICE_ID = "device_id";
     public static Handler mUiHandler = null;
-
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        unregisterReceiver(broadcastReceiver);
-    }
+    private ConectivityReceiver cBR = null;
+    private OnOffReceiver oBR = null;
 
     public void changeFragment(Fragment fr){
         FragmentManager fm = getSupportFragmentManager();
@@ -130,10 +129,21 @@ public class MyMainActivity extends FragmentActivity implements LogCatFragment.O
         setContentView(R.layout.activity_my_main);
         mNM = (NotificationManager)getSystemService(NOTIFICATION_SERVICE);
 
+        mnozina = preferences.getStringSet("applist",null);
+
         MenuFragment menuf = MenuFragment.newInstance();
         menuf.setArguments(savedInstanceState);
 
-        registerReceiver(broadcastReceiver, new IntentFilter("STOP_ME"));
+        //registerReceiver(broadcastReceiver, new IntentFilter("STOP_ME"));
+        /*cBR = new ConectivityReceiver();
+        cBR.setMainActivityHandler(this);
+        IntentFilter callInterceptorIntentFilter = new IntentFilter("android.net.conn.CONNECTIVITY_CHANGE");
+        registerReceiver(cBR, callInterceptorIntentFilter);
+
+        oBR = new OnOffReceiver();
+        oBR.setMainActivityHandler(this);
+        IntentFilter oFilter = new IntentFilter("android.intent.action.BOOT_COMPLETED");
+        registerReceiver(oBR, oFilter);*/
 
         FragmentManager fm = getSupportFragmentManager();
         FragmentTransaction ft = fm.beginTransaction();
@@ -148,21 +158,41 @@ public class MyMainActivity extends FragmentActivity implements LogCatFragment.O
         SharedPreferences preferences = getSharedPreferences("myPrefs", Context.MODE_PRIVATE);
         netDevRunning = preferences.getInt("run",0);
 
+        if(mnozina==null) {
+            mnozina = preferences.getStringSet("applist", null);
+        }
         /*MyDBAdapter db = new MyDBAdapter(this);
         db.dropTable("nmap");*/
+    }
+
+    private void saveAll(){
+        SharedPreferences preferences = getSharedPreferences("myPrefs", Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putInt("run", netDevRunning);
+
+        editor.remove("applist");
+        editor.commit();
+
+        editor.putStringSet("applist", mnozina);
+        editor.apply();
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-        SharedPreferences preferences = getSharedPreferences("myPrefs", Context.MODE_PRIVATE);
-        SharedPreferences.Editor editor = preferences.edit();
-        editor.putInt("run", netDevRunning);                                     //??test
-        editor.apply();
+        saveAll();
 
         /*index = this.listview.getFirstVisiblePosition();
         View v = this.listview.getChildAt(0);
         top = (v == null) ? 0 : v.getTop();*/
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        saveAll();
+        //unregisterReceiver(cBR);
+        //unregisterReceiver(oBR);
     }
 
     @Override
@@ -256,16 +286,17 @@ public class MyMainActivity extends FragmentActivity implements LogCatFragment.O
         //run just once
         SharedPreferences preferences = getSharedPreferences("myPrefs", Context.MODE_PRIVATE);
         boolean first = preferences.getBoolean("run_app_info", true);
-        if(first){
-            AlarmManager alarm = (AlarmManager) this.getSystemService(Context.ALARM_SERVICE);
 
-            Intent intent = new Intent(this, NetDevService.class);
-            intent.putExtra(DEVICE_ID,this.getDeviceID());
-            PendingIntent pintent = PendingIntent.getService(this, 2580, intent, 0);
+        AlarmManager alarm = (AlarmManager) this.getSystemService(Context.ALARM_SERVICE);
 
-            alarm.setRepeating(AlarmManager.RTC_WAKEUP, System.currentTimeMillis(), (20 * 60 * 1000), pintent);
+        Intent intent = new Intent(this, NetDevService.class);
+        intent.putExtra(DEVICE_ID,this.getDeviceID());
+        PendingIntent pintent = PendingIntent.getService(this, 2580, intent, 0);
 
-            ///////////////////
+        alarm.setRepeating(AlarmManager.RTC_WAKEUP, System.currentTimeMillis(), (20 * 60000), pintent);
+
+        ///////////////////
+        if(first) {
             Intent apintent = new Intent(this, AppInfoService.class);
             apintent.setAction(AppInfoService.ACTION_GETAPP);
             PendingIntent appintent = PendingIntent.getService(this, 1234, apintent, 0);
@@ -274,17 +305,17 @@ public class MyMainActivity extends FragmentActivity implements LogCatFragment.O
             } catch (PendingIntent.CanceledException e) {
                 e.printStackTrace();
             }
-            //this.startService(appintent);
-
-            //alarm.setRepeating(AlarmManager.RTC_WAKEUP, System.currentTimeMillis(), (30*60*1000), appintent);
-            //run every time
-            Intent runintent = new Intent(this, AppInfoService.class);
-            runintent.setAction(AppInfoService.ACTION_RUNAPP);
-            PendingIntent runpintent = PendingIntent.getService(this, 1818, runintent, 0);
-
-            alarm.setRepeating(AlarmManager.RTC_WAKEUP, System.currentTimeMillis(), (30 * 60 * 1000), runpintent);
-            preferences.edit().putBoolean("run_app_info", false).apply();
         }
+        //this.startService(appintent);
+
+        //alarm.setRepeating(AlarmManager.RTC_WAKEUP, System.currentTimeMillis(), (30*60*1000), appintent);
+        //run every time
+        Intent runintent = new Intent(this, AppInfoService.class);
+        runintent.setAction(AppInfoService.ACTION_RUNAPP);
+        PendingIntent runpintent = PendingIntent.getService(this, 1818, runintent, 0);
+
+        alarm.setRepeating(AlarmManager.RTC_WAKEUP, System.currentTimeMillis(), (45 * 60000), runpintent);
+        preferences.edit().putBoolean("run_app_info", false).apply();
     }
 
     public void stopLog() {
@@ -310,10 +341,4 @@ public class MyMainActivity extends FragmentActivity implements LogCatFragment.O
         alarm.cancel(runpintent);
     }
 
-    BroadcastReceiver broadcastReceiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            stopLog();
-        }
-    };
 }
